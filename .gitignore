@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+.swiftpm/
+
+# Firebase / secrets
+GoogleService-Info.plist
+.firebase/
+*-debug.log
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+functions/.runtimeconfig.json
+serviceAccountKey*.json
+.env
+.env.*
+
+# Node
+node_modules/
+functions/lib/
+functions/coverage/
+seed/node_modules/
+npm-debug.log*

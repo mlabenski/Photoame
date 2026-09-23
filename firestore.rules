@@ -1,0 +1,98 @@
+rules_version = '2';
+
+// Chatsnap Firestore rules.
+// Principle: all product state transitions happen in Cloud Functions.
+// Clients may only: edit two fields on their own user doc, manage their push
+// token, and create a snap (with state "sent") into a pair they belong to.
+// Every other write is denied and must go through a callable/trigger.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // The signed-in user's own user document (used to resolve their active pair).
+    function myUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function pairData(pairId) {
+      return get(/databases/$(database)/documents/pairs/$(pairId)).data;
+    }
+
+    function isMemberOfPair(pairId) {
+      return isSignedIn() && request.auth.uid in pairData(pairId).members;
+    }
+
+    // True when the reader and otherUid are both members of the reader's active pair.
+    function sharesActivePair(otherUid) {
+      return isSignedIn()
+        && myUser().activePairId != null
+        && otherUid in pairData(myUser().activePairId).members;
+    }
+
+    match /users/{uid} {
+      // Read own doc, or a partner's doc when you share an active pair
+      // (needed only to show the partner's display name).
+      allow read: if isSelf(uid) || sharesActivePair(uid);
+
+      // A user may create their own doc and may only ever change displayName
+      // and ageConfirmedAt. All other fields are server-owned.
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['displayName', 'ageConfirmedAt']);
+      allow delete: if false; // deleteAccount function only
+
+      match /private/push {
+        allow read, write: if isSelf(uid);
+      }
+      // Any other private doc is server-only.
+      match /private/{docId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Invite codes are opaque to clients; created/consumed only via callables.
+    match /invites/{code} {
+      allow read, write: if false;
+    }
+
+    match /pairs/{pairId} {
+      allow read: if isMemberOfPair(pairId);
+      allow write: if false; // createInvite/acceptInvite/endPair only
+
+      match /snaps/{snapId} {
+        allow read: if isMemberOfPair(pairId);
+
+        // The sender may create a snap in "sent" state only. Server-managed
+        // lifecycle fields must be absent at creation time.
+        allow create: if isMemberOfPair(pairId)
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.state == 'sent'
+          && request.resource.data.timerSeconds in [0, 3, 5, 10]
+          && request.resource.data.keys().hasOnly([
+               'senderUid', 'storagePath', 'caption', 'timerSeconds',
+               'state', 'createdAt'
+             ]);
+
+        // All transitions (open/replay/keep/screenshot/expire) run server-side.
+        allow update, delete: if false;
+      }
+    }
+
+    match /blocks/{uid}/blocked/{otherUid} {
+      allow read, write: if false; // blockUser function only
+    }
+
+    match /reports/{reportId} {
+      allow read, write: if false; // submitReport function only
+    }
+  }
+}
