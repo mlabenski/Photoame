@@ -36,5 +36,18 @@ with `isExcludedFromBackup` set. Firestore keeps the doc (`state="kept"`), but t
 blob is deleted from Cloud Storage once both members have kept it and each client
 has downloaded its local copy.
 
+## End Pair / kept-snap purge across the device boundary
+The server deletes all snap docs and Storage blobs under a pair on End Pair /
+Block / Delete account. It cannot reach kept images already copied into a peer's
+sandbox. The client is responsible for purging its local "Us" gallery when it
+observes its `activePairId` cleared (pair ended). Recorded so the "all shared
+data is gone" criterion is understood as server-side + client-reactive purge.
+
+## Screenshot representation
+`reportScreenshot` records `screenshotAt` on the snap and pushes the sender, but
+does NOT overwrite `state` (which tracks the open/replay/keep lifecycle). The
+sender's inbox shows a "Screenshotted" badge whenever `screenshotAt` is set,
+independent of the lifecycle state.
+
 ## Emulator project id
 `chatsnap-dev` (see `.firebaserc`). Overridable via `firebase use`.
