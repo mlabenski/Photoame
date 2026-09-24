@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  SAMPLE ONLY. Copy this to Chatsnap/Chatsnap/GoogleService-Info.plist and
+  replace the values with those from your own Firebase project
+  (Project settings -> Your apps -> iOS). The real file is git-ignored.
+
+  For local development against the Emulator Suite the field VALUES are not
+  contacted (traffic is redirected to localhost), but a well-formed plist must
+  exist for FirebaseApp.configure() to succeed. BUNDLE_ID must match the app.
+-->
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyD-SAMPLE-REPLACE-ME-0000000000000</string>
+	<key>GCM_SENDER_ID</key>
+	<string>000000000000</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.chatsnap.app</string>
+	<key>PROJECT_ID</key>
+	<string>chatsnap-dev</string>
+	<key>STORAGE_BUCKET</key>
+	<string>chatsnap-dev.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:000000000000:ios:0000000000000000000000</string>
+</dict>
+</plist>

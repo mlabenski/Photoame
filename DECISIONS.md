@@ -51,3 +51,28 @@ independent of the lifecycle state.
 
 ## Emulator project id
 `chatsnap-dev` (see `.firebaserc`). Overridable via `firebase use`.
+
+## Xcode project generation
+The project uses an Xcode 16+ file-system-synchronized group
+(`PBXFileSystemSynchronizedRootGroup`, objectVersion 77) so new files under
+`Chatsnap/Chatsnap/` are picked up automatically. `Info.plist` and
+`Chatsnap.entitlements` are excluded from the synchronized target membership via
+a build-file exception set (otherwise they'd be double-processed).
+
+## Camera concurrency model
+Under Swift 6 strict concurrency the `AVCaptureSession` is confined to a private
+serial queue inside `CaptureSessionController` (`@unchecked Sendable`), and the
+main-actor `CameraService` only forwards calls and holds `@Observable` UI state.
+This keeps the app compiling with **zero warnings** under complete concurrency
+checking, which was verified with `xcodebuild` against the iOS Simulator SDK.
+
+## Snap model Sendable
+`@DocumentID` is not `Sendable`, so `Snap`/`Pair`/`UserProfile` are not marked
+`Sendable`. They only cross isolation inside an `AsyncStream` (which does not
+require a `Sendable` element), so this is safe.
+
+## What was NOT verified here
+Signing, on-device install, real APNs delivery, and the live end-to-end flow
+require an Apple Developer team + a real Firebase project, so they were not run
+in this environment. The iOS target compiles clean for the Simulator SDK; the
+functions test suite runs green against the emulator.

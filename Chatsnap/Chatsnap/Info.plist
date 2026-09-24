@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Camera only. Chatsnap NEVER accesses the Photos library, so there are
+	     deliberately NO NSPhotoLibrary* usage keys in this file. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Chatsnap uses the camera so you can send photos to your partner. Photos are never saved to your camera roll.</string>
+
+	<!-- Manual APNs/FCM handling; see AppDelegate + PushService. -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+
+	<!-- iPhone, portrait only. -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string></string>
+	</dict>
+
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>
