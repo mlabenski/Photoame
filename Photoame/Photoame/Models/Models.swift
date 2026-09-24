@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-/// A Chatsnap user profile (`users/{uid}`). Only `displayName` and
+/// A Photoame user profile (`users/{uid}`). Only `displayName` and
 /// `ageConfirmedAt` are ever written by the client.
 struct UserProfile: Codable, Identifiable {
     @DocumentID var id: String?

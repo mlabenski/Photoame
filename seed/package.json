@@ -1,7 +1,7 @@
 {
-  "name": "chatsnap-seed",
+  "name": "photoame-seed",
   "version": "0.1.0",
-  "description": "Bot-partner seeder so Chatsnap can be tested solo against the emulator.",
+  "description": "Bot-partner seeder so Photoame can be tested solo against the emulator.",
   "type": "commonjs",
   "engines": { "node": ">=20" },
   "scripts": {

@@ -11,8 +11,8 @@ struct SettingsView: View {
     @State private var showReport = false
 
     // Placeholder URLs (see README).
-    private let privacyURL = URL(string: "https://chatsnap.example.com/privacy")!
-    private let supportURL = URL(string: "https://chatsnap.example.com/support")!
+    private let privacyURL = URL(string: "https://photoame.example.com/privacy")!
+    private let supportURL = URL(string: "https://photoame.example.com/support")!
 
     var body: some View {
         NavigationStack {

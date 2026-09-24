@@ -2,6 +2,9 @@ import Foundation
 import FirebaseFirestore
 import FirebaseStorage
 import FirebaseFunctions
+import os
+
+private let repoLog = Logger(subsystem: "com.photoame.app", category: "snaps")
 
 /// Abstraction over snap persistence so view models can be tested with a mock.
 protocol SnapRepositoryProtocol: Sendable {
@@ -31,7 +34,10 @@ actor SnapRepository: SnapRepositoryProtocol {
             box.registration = db.collection("pairs/\(pairId)/snaps")
                 .order(by: "createdAt", descending: true)
                 .limit(to: 50)
-                .addSnapshotListener { snapshot, _ in
+                .addSnapshotListener { snapshot, error in
+                    if let error {
+                        repoLog.error("snap stream error (pair \(pairId, privacy: .public)): \(error.localizedDescription, privacy: .public)")
+                    }
                     let snaps = snapshot?.documents.compactMap {
                         try? $0.data(as: Snap.self)
                     } ?? []

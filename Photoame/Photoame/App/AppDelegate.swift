@@ -2,7 +2,7 @@ import UIKit
 import FirebaseMessaging
 
 /// Handles Firebase configuration and the APNs <-> FCM token handshake. The
-/// PushService reference is set by ChatsnapApp so callbacks can route deep links.
+/// PushService reference is set by PhotoameApp so callbacks can route deep links.
 final class AppDelegate: NSObject, UIApplicationDelegate {
     @MainActor var pushService: PushService?
 

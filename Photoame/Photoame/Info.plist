@@ -2,9 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Standard bundle keys. These use build-setting variables that Xcode
-	     expands at build time (GENERATE_INFOPLIST_FILE is NO because we ship a
-	     custom Info.plist for the Firebase/camera keys below). -->
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -23,38 +20,35 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-
-	<!-- Camera only. Photoame NEVER accesses the Photos library, so there are
-	     deliberately NO NSPhotoLibrary* usage keys in this file. -->
-	<key>NSCameraUsageDescription</key>
-	<string>Photoame uses the camera so you can send photos to your partner. Photos are never saved to your camera roll.</string>
-
-	<!-- Manual APNs/FCM handling; see AppDelegate + PushService. -->
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
-
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Photoame uses the camera so you can send photos to your partner. Photos are never saved to your camera roll.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Photoame connects to a local Firebase development server on your network during testing.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 	</array>
-
-	<!-- iPhone, portrait only. -->
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
 		<string></string>
 	</dict>
-
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
 </dict>
 </plist>

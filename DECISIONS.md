@@ -56,11 +56,13 @@ Wired to the real project **Photoame** (`photoame-d8adb`, number 1077673205909).
 - Storage bucket: `photoame-d8adb.firebasestorage.app` (new-style default for
   projects created after Oct 2024, not `*.appspot.com`).
 - The real `GoogleService-Info.plist` lives at
-  `Chatsnap/Chatsnap/GoogleService-Info.plist` (git-ignored) so the target
+  `Photoame/Photoame/GoogleService-Info.plist` (git-ignored) so the target
   bundles it; it must sit inside the synchronized source folder, not beside the
   `.xcodeproj`.
-- The Xcode target/binary is still internally named `Chatsnap`; only the
-  user-facing display name and copy were rebranded to **Photoame**.
+- Fully renamed to **Photoame**: the outer folder, `Photoame.xcodeproj`, the
+  target/scheme, the `@main` `PhotoameApp`, `Photoame.entitlements`, the source
+  folder, and all user-facing copy. The emulator-host / storage-bucket override
+  env vars are `PHOTOAME_EMULATOR_HOST` / `PHOTOAME_STORAGE_BUCKET`.
 
 ## Info.plist standard keys
 `GENERATE_INFOPLIST_FILE = NO` (we ship a custom Info.plist for the Firebase and
@@ -73,8 +75,8 @@ variables that expand at build time. Verified the built `.app` reports
 ## Xcode project generation
 The project uses an Xcode 16+ file-system-synchronized group
 (`PBXFileSystemSynchronizedRootGroup`, objectVersion 77) so new files under
-`Chatsnap/Chatsnap/` are picked up automatically. `Info.plist` and
-`Chatsnap.entitlements` are excluded from the synchronized target membership via
+`Photoame/Photoame/` are picked up automatically. `Info.plist` and
+`Photoame.entitlements` are excluded from the synchronized target membership via
 a build-file exception set (otherwise they'd be double-processed).
 
 ## Camera concurrency model

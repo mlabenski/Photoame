@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Chatsnap Firestore rules.
+// Photoame Firestore rules.
 // Principle: all product state transitions happen in Cloud Functions.
 // Clients may only: edit two fields on their own user doc, manage their push
 // token, and create a snap (with state "sent") into a pair they belong to.

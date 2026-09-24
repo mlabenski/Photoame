@@ -5,6 +5,8 @@ import UIKit
 /// pane after capture (caption + view-timer + send). Every interaction is one tap.
 struct CameraView: View {
     @Bindable var model: CameraViewModel
+    /// Bridges preview-layer tap coordinates to capture-device coordinates.
+    @State private var previewHandle = CameraPreviewHandle()
 
     var body: some View {
         ZStack {
@@ -50,7 +52,8 @@ struct CameraView: View {
     }
 
     private func previewLayer(in size: CGSize) -> some View {
-        let preview = CameraPreview(session: model.camera.captureSession)
+        let preview = CameraPreview(session: model.camera.captureSession,
+                                    handle: previewHandle)
         return preview
             .ignoresSafeArea()
             .gesture(
@@ -60,9 +63,13 @@ struct CameraView: View {
             .onTapGesture(count: 2) { model.flip() }
             .onTapGesture { location in
                 // Single tap = focus. (Double-tap flip takes priority above.)
-                let normalized = CGPoint(x: location.x / size.width,
-                                         y: location.y / size.height)
-                model.camera.focus(atPoint: normalized)
+                // Convert through the preview layer so the focus point accounts
+                // for `.resizeAspectFill` cropping; fall back to a plain
+                // normalization if the layer isn't laid out yet.
+                let point = previewHandle.devicePoint(for: location)
+                    ?? CGPoint(x: location.x / size.width,
+                               y: location.y / size.height)
+                model.camera.focus(atPoint: point)
             }
             .accessibilityElement()
             .accessibilityLabel("Camera preview")

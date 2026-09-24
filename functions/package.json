@@ -1,7 +1,7 @@
 {
-  "name": "chatsnap-functions",
+  "name": "photoame-functions",
   "version": "0.1.0",
-  "description": "Chatsnap Cloud Functions (all product rules live here).",
+  "description": "Photoame Cloud Functions (all product rules live here).",
   "main": "lib/index.js",
   "engines": {
     "node": "20"

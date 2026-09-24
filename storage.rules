@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Chatsnap Cloud Storage rules.
+// Photoame Cloud Storage rules.
 // Snap blobs live at snaps/{pairId}/{snapId}.jpg. Only the sender may write,
 // only pair members may read. Deletion is server-side (sweepExpired / endPair).
 

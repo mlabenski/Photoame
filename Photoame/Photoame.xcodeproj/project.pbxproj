@@ -16,26 +16,26 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		PRD00000000000000000001 /* Chatsnap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chatsnap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		PRD00000000000000000001 /* Photoame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Photoame.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EXC00000000000000000001 /* Exceptions for "Chatsnap" folder in "Chatsnap" target */ = {
+		EXC00000000000000000001 /* Exceptions for "Photoame" folder in "Photoame" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = TGT00000000000000000001 /* Chatsnap */;
+			target = TGT00000000000000000001 /* Photoame */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		SYN00000000000000000001 /* Chatsnap */ = {
+		SYN00000000000000000001 /* Photoame */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				EXC00000000000000000001 /* Exceptions for "Chatsnap" folder in "Chatsnap" target */,
+				EXC00000000000000000001 /* Exceptions for "Photoame" folder in "Photoame" target */,
 			);
-			path = Chatsnap;
+			path = Photoame;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -57,10 +57,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F4FD0CAE3065836C009A0D43 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		GRP00000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				SYN00000000000000000001 /* Chatsnap */,
+				SYN00000000000000000001 /* Photoame */,
+				F4FD0CAE3065836C009A0D43 /* Frameworks */,
 				GRP00000000000000000002 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,7 +76,7 @@
 		GRP00000000000000000002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				PRD00000000000000000001 /* Chatsnap.app */,
+				PRD00000000000000000001 /* Photoame.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,9 +84,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		TGT00000000000000000001 /* Chatsnap */ = {
+		TGT00000000000000000001 /* Photoame */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CFL00000000000000000002 /* Build configuration list for PBXNativeTarget "Chatsnap" */;
+			buildConfigurationList = CFL00000000000000000002 /* Build configuration list for PBXNativeTarget "Photoame" */;
 			buildPhases = (
 				PHS00000000000000000001 /* Sources */,
 				PHS00000000000000000002 /* Frameworks */,
@@ -89,9 +97,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				SYN00000000000000000001 /* Chatsnap */,
+				SYN00000000000000000001 /* Photoame */,
 			);
-			name = Chatsnap;
+			name = Photoame;
 			packageProductDependencies = (
 				DEP00000000000000000001 /* FirebaseAuth */,
 				DEP00000000000000000002 /* FirebaseFirestore */,
@@ -100,8 +108,8 @@
 				DEP00000000000000000005 /* FirebaseMessaging */,
 				DEP00000000000000000006 /* FirebaseCrashlytics */,
 			);
-			productName = Chatsnap;
-			productReference = PRD00000000000000000001 /* Chatsnap.app */;
+			productName = Photoame;
+			productReference = PRD00000000000000000001 /* Photoame.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -112,14 +120,14 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2630;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					TGT00000000000000000001 = {
 						CreatedOnToolsVersion = 26.3;
 					};
 				};
 			};
-			buildConfigurationList = CFL00000000000000000001 /* Build configuration list for PBXProject "Chatsnap" */;
+			buildConfigurationList = CFL00000000000000000001 /* Build configuration list for PBXProject "Photoame" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -136,7 +144,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				TGT00000000000000000001 /* Chatsnap */,
+				TGT00000000000000000001 /* Photoame */,
 			);
 		};
 /* End PBXProject section */
@@ -170,26 +178,51 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 6FXR48YHJY;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -205,18 +238,43 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 6FXR48YHJY;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -229,14 +287,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Chatsnap/Chatsnap.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Photoame/Photoame.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Chatsnap/Info.plist;
+				INFOPLIST_FILE = Photoame/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Photoame;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -256,14 +314,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Chatsnap/Chatsnap.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Photoame/Photoame.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Chatsnap/Info.plist;
+				INFOPLIST_FILE = Photoame/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Photoame;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -281,7 +339,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CFL00000000000000000001 /* Build configuration list for PBXProject "Chatsnap" */ = {
+		CFL00000000000000000001 /* Build configuration list for PBXProject "Photoame" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CFG00000000000000000001 /* Debug */,
@@ -290,7 +348,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CFL00000000000000000002 /* Build configuration list for PBXNativeTarget "Chatsnap" */ = {
+		CFL00000000000000000002 /* Build configuration list for PBXNativeTarget "Photoame" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CFG00000000000000000003 /* Debug */,

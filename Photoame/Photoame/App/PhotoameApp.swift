@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ChatsnapApp: App {
+struct PhotoameApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var env = AppEnvironment()
 

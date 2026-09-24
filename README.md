@@ -1,9 +1,9 @@
-# Chatsnap
+# Photoame
 
-Chatsnap is an iPhone photo-messaging app for a couple: each account is paired
+Photoame is an iPhone photo-messaging app for a couple: each account is paired
 with exactly **one** other person, photos arrive by push, are viewed once (plus
 one replay) and then disappear unless **both** people choose to keep them.
-Chatsnap photos never touch the Photos library.
+Photoame photos never touch the Photos library.
 
 - **iOS:** Swift 6 · SwiftUI · AVFoundation · iOS 18+ · iPhone-only · portrait-only
 - **Backend:** Firebase — Auth (Sign in with Apple only), Firestore, Cloud
@@ -18,10 +18,10 @@ enforced again in the security rules.
 ## Repository layout
 
 ```
-Chatsnap/                 Xcode project (SwiftUI app)
-  Chatsnap/               app sources, feature-foldered
+Photoame/                 Xcode project (SwiftUI app)
+  Photoame/               app sources, feature-foldered
     App/ Auth/ Pairing/ Camera/ Inbox/ Viewer/ Gallery/ Settings/ Services/ Models/
-  GoogleService-Info.Sample.plist   copy this to Chatsnap/Chatsnap/GoogleService-Info.plist
+  GoogleService-Info.Sample.plist   copy this to Photoame/Photoame/GoogleService-Info.plist
 functions/                Cloud Functions + emulator-backed tests
 seed/                     bot-partner seeder (test the app solo)
 firestore.rules  storage.rules  firestore.indexes.json  firebase.json  .firebaserc
@@ -36,12 +36,12 @@ DECISIONS.md              ambiguities resolved during the build
    `GoogleService-Info.plist`.
 3. Copy it into the app target (this file is git-ignored):
    ```bash
-   cp /path/to/GoogleService-Info.plist Chatsnap/Chatsnap/GoogleService-Info.plist
+   cp /path/to/GoogleService-Info.plist Photoame/Photoame/GoogleService-Info.plist
    ```
    For emulator-only work you can instead copy the checked-in sample — the field
    values aren't contacted locally, but a well-formed plist must exist:
    ```bash
-   cp Chatsnap/GoogleService-Info.Sample.plist Chatsnap/Chatsnap/GoogleService-Info.plist
+   cp Photoame/GoogleService-Info.Sample.plist Photoame/Photoame/GoogleService-Info.plist
    ```
 4. In the console enable **Authentication → Sign in with Apple**, create a
    **Firestore** database, and enable **Storage**.
@@ -72,9 +72,9 @@ gsutil lifecycle set /tmp/lifecycle.json gs://photoame-d8adb.firebasestorage.app
 
 ## 3. Sign in with Apple capability
 
-- The app ships `Chatsnap/Chatsnap/Chatsnap.entitlements` with the
+- The app ships `Photoame/Photoame/Photoame.entitlements` with the
   **Sign in with Apple** entitlement and `aps-environment = development`.
-- In Xcode, select the **Chatsnap** target → **Signing & Capabilities**, set your
+- In Xcode, select the **Photoame** target → **Signing & Capabilities**, set your
   **Team**, and confirm both **Sign in with Apple** and **Push Notifications**
   capabilities are present. Automatic signing will register the App ID.
 - For a TestFlight/App Store build, the entitlement's `aps-environment` becomes
@@ -95,7 +95,7 @@ In **Debug** builds the app auto-connects to the emulators (see
 physical device set your Mac's LAN IP:
 
 - Xcode → Product → Scheme → Edit Scheme → Run → Arguments → Environment
-  Variables → add `CHATSNAP_EMULATOR_HOST = 192.168.x.y`.
+  Variables → add `PHOTOAME_EMULATOR_HOST = 192.168.x.y`.
 
 ### Functions tests
 
@@ -108,12 +108,12 @@ Covers `acceptInvite`, `endPair`, `keepSnap`, and `sweepExpired` (21 tests).
 
 ## 5. Running on a device
 
-1. Open `Chatsnap/Chatsnap.xcodeproj` in Xcode 16 or newer. Let SwiftPM resolve
+1. Open `Photoame/Photoame.xcodeproj` in Xcode 16 or newer. Let SwiftPM resolve
    the Firebase package (pinned in `Package.resolved` to 11.x).
-2. Set your signing **Team** on the Chatsnap target.
-3. Ensure `Chatsnap/Chatsnap/GoogleService-Info.plist` exists (step 1).
+2. Set your signing **Team** on the Photoame target.
+3. Ensure `Photoame/Photoame/GoogleService-Info.plist` exists (step 1).
 4. Select your iPhone (iOS 18+) and Run.
-   - **Debug** on device: start the emulators and set `CHATSNAP_EMULATOR_HOST`
+   - **Debug** on device: start the emulators and set `PHOTOAME_EMULATOR_HOST`
      to your Mac's IP (both must be on the same Wi-Fi).
    - **Release** on device talks to your production Firebase project and delivers
      real pushes (needs the APNs key from step 2).
@@ -126,7 +126,7 @@ With the emulators running:
 cd seed && npm install && npm start
 ```
 
-The seeder creates a **Chatsnap Bot** account and prints an invite code
+The seeder creates a **Photoame Bot** account and prints an invite code
 (`BOTBOT`). In the app, tap **Enter code**, type `BOTBOT`, and you're paired. The
 bot then auto-sends a test snap every 60 seconds so you can exercise the viewer,
 timers, replay, keep, and expiry with a single device.
@@ -138,13 +138,13 @@ Paste the following into App Store Connect → App Review Information.
 > **Sign-in:** Sign in with Apple is the only method. On first launch the app
 > shows an 18+ confirmation and asks for a display name.
 >
-> **Pairing / demo account:** Chatsnap connects two people. To review without a
+> **Pairing / demo account:** Photoame connects two people. To review without a
 > second device, we run a **bot partner** on our backend. Use the demo account
 > below; it is pre-paired with the bot, which automatically sends a new photo
 > every ~60 seconds so you can open, time out, replay, and keep a snap.
 >
 > - Demo Apple ID: _(provide a sandbox/demo account)_
-> - After signing in you are already paired with "Chatsnap Bot".
+> - After signing in you are already paired with "Photoame Bot".
 > - Wait up to a minute for the first snap, tap the inbox pill, then tap the snap
 >   to open it. Try **Keep** (the bot keeps automatically, so it lands in the
 >   "Us" gallery), and take a screenshot to see the sender notice.

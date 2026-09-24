@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2630"
-   version = "1.7">
+   LastUpgradeVersion = "2700"
+   version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "TGT00000000000000000001"
-               BuildableName = "Chatsnap.app"
-               BlueprintName = "Chatsnap"
-               ReferencedContainer = "container:Chatsnap.xcodeproj">
+               BuildableName = "Photoame.app"
+               BlueprintName = "Photoame"
+               ReferencedContainer = "container:Photoame.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -27,6 +27,8 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -43,11 +45,18 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "TGT00000000000000000001"
-            BuildableName = "Chatsnap.app"
-            BlueprintName = "Chatsnap"
-            ReferencedContainer = "container:Chatsnap.xcodeproj">
+            BuildableName = "Photoame.app"
+            BlueprintName = "Photoame"
+            ReferencedContainer = "container:Photoame.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "PHOTOAME_EMULATOR_HOST"
+            value = "192.168.1.16"
+            isEnabled = "NO">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -60,9 +69,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "TGT00000000000000000001"
-            BuildableName = "Chatsnap.app"
-            BlueprintName = "Chatsnap"
-            ReferencedContainer = "container:Chatsnap.xcodeproj">
+            BuildableName = "Photoame.app"
+            BlueprintName = "Photoame"
+            ReferencedContainer = "container:Photoame.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

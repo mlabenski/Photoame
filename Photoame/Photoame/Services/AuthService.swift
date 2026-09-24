@@ -3,6 +3,7 @@ import AuthenticationServices
 import CryptoKit
 import FirebaseAuth
 import FirebaseFirestore
+import os
 
 /// Owns Sign in with Apple and the signed-in user's profile document.
 /// The single source of truth for "who am I" and "am I paired".
@@ -11,11 +12,21 @@ import FirebaseFirestore
 final class AuthService: NSObject {
     private(set) var uid: String?
     private(set) var profile: UserProfile?
-    private(set) var isLoading = true
+
+    /// The launch gate. True until we know both whether someone is signed in
+    /// (`authResolved`) and, if so, whether their profile has loaded
+    /// (`profileResolved`). Computed so it can never get "stuck" out of sync
+    /// with the two facts that actually determine it.
+    var isLoading: Bool { !authResolved || (uid != nil && !profileResolved) }
+
+    private var authResolved = false
+    private var profileResolved = false
 
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var profileListener: ListenerRegistration?
     private var currentNonce: String?
+    private var bootstrapTimeout: Task<Void, Never>?
+    private let log = Logger(subsystem: "com.photoame.app", category: "auth")
     private var db: Firestore { Firestore.firestore() }
 
     /// True once a signed-in user has both confirmed 18+ and set a display name.
@@ -31,28 +42,60 @@ final class AuthService: NSObject {
             guard let self else { return }
             Task { @MainActor in self.handleAuthChange(user) }
         }
+        // Safety net: if no listener ever delivers (emulator wiped, offline
+        // cache disabled, transient network), force the launch gate open after a
+        // grace period so the app can never hang on the spinner forever.
+        bootstrapTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard let self, !Task.isCancelled, self.isLoading else { return }
+            self.log.warning("auth bootstrap timed out; unblocking UI")
+            self.authResolved = true
+            self.profileResolved = true
+        }
     }
 
     private func handleAuthChange(_ user: FirebaseAuth.User?) {
+        authResolved = true
         profileListener?.remove()
+        profileListener = nil
         guard let user else {
             uid = nil
             profile = nil
-            isLoading = false
+            profileResolved = true
             return
         }
         uid = user.uid
+        profileResolved = false
         listenToProfile(uid: user.uid)
     }
 
     private func listenToProfile(uid: String) {
-        profileListener = db.document("users/\(uid)").addSnapshotListener { [weak self] snap, _ in
+        profileListener = db.document("users/\(uid)").addSnapshotListener { [weak self] snap, error in
             guard let self else { return }
             Task { @MainActor in
-                self.profile = try? snap?.data(as: UserProfile.self)
-                self.isLoading = false
+                if let error {
+                    self.log.error("profile listener error: \(error.localizedDescription, privacy: .public)")
+                    self.recoverIfCredentialInvalid(error)
+                } else {
+                    self.profile = try? snap?.data(as: UserProfile.self)
+                }
+                // Resolve on error too — otherwise a failed first snapshot (no
+                // offline cache to fall back on) would strand the launch gate.
+                self.profileResolved = true
             }
         }
+    }
+
+    /// A permission-denied / unauthenticated read usually means our cached
+    /// credential is no longer valid — e.g. the account was deleted or the
+    /// emulator was reset out from under us. Sign out so the UI recovers to the
+    /// sign-in screen instead of looping against a dead session.
+    private func recoverIfCredentialInvalid(_ error: Error) {
+        let code = (error as NSError).code
+        guard code == FirestoreErrorCode.permissionDenied.rawValue
+            || code == FirestoreErrorCode.unauthenticated.rawValue else { return }
+        log.notice("cached credential invalid; signing out to recover")
+        try? Auth.auth().signOut()
     }
 
     // MARK: - Sign in with Apple
