@@ -2,7 +2,7 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 const PROJECT_ID =
-  process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || "chatsnap-dev";
+  process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || "photoame-d8adb";
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   throw new Error(

@@ -12,17 +12,17 @@
 -->
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyD-SAMPLE-REPLACE-ME-0000000000000</string>
+	<string>AIzaSy-SAMPLE-REPLACE-ME-000000000000000</string>
 	<key>GCM_SENDER_ID</key>
-	<string>000000000000</string>
+	<string>1077673205909</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.chatsnap.app</string>
+	<string>com.photoame.app</string>
 	<key>PROJECT_ID</key>
-	<string>chatsnap-dev</string>
+	<string>photoame-d8adb</string>
 	<key>STORAGE_BUCKET</key>
-	<string>chatsnap-dev.appspot.com</string>
+	<string>photoame-d8adb.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false/>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -34,6 +34,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true/>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:000000000000:ios:0000000000000000000000</string>
+	<string>1:1077673205909:ios:0000000000000000000000</string>
 </dict>
 </plist>

@@ -24,7 +24,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				Chatsnap.entitlements,
 			);
 			target = TGT00000000000000000001 /* Chatsnap */;
 		};
@@ -237,7 +236,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Chatsnap/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Chatsnap;
+				INFOPLIST_KEY_CFBundleDisplayName = Photoame;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -245,7 +244,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chatsnap.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photoame.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -264,7 +263,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Chatsnap/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Chatsnap;
+				INFOPLIST_KEY_CFBundleDisplayName = Photoame;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -272,7 +271,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chatsnap.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photoame.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;

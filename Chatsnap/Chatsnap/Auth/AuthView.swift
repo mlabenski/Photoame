@@ -14,7 +14,7 @@ struct AuthView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(.yellow)
                     .accessibilityHidden(true)
-                Text("Chatsnap")
+                Text("Photoame")
                     .font(.largeTitle.bold())
                 Text("Photos, just for the two of you.")
                     .font(.headline)
@@ -38,7 +38,7 @@ struct AuthView: View {
             .frame(height: 52)
             .accessibilityLabel("Sign in with Apple")
 
-            Text("Chatsnap uses Sign in with Apple only.")
+            Text("Photoame uses Sign in with Apple only.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

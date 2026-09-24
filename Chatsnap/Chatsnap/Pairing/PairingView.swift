@@ -62,7 +62,7 @@ struct PairingView: View {
                 .accessibilityHidden(true)
             Text("Pair with one person")
                 .font(.title2.bold())
-            Text("Chatsnap connects you to exactly one partner.")
+            Text("Photoame connects you to exactly one partner.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -109,7 +109,7 @@ struct PairingView: View {
                     Text("Valid until \(expires.formatted(date: .abbreviated, time: .shortened))")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                ShareLink(item: "Pair with me on Chatsnap. My code is \(code).") {
+                ShareLink(item: "Pair with me on Photoame. My code is \(code).") {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
                 .padding(.top, 4)

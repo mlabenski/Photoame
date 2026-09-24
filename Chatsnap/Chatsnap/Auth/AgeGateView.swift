@@ -16,7 +16,7 @@ struct AgeGateView: View {
             Text("Are you 18 or older?")
                 .font(.title.bold())
                 .multilineTextAlignment(.center)
-            Text("Chatsnap is for adults only. You must be 18+ to continue.")
+            Text("Photoame is for adults only. You must be 18+ to continue.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

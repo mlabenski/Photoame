@@ -49,8 +49,26 @@ does NOT overwrite `state` (which tracks the open/replay/keep lifecycle). The
 sender's inbox shows a "Screenshotted" badge whenever `screenshotAt` is set,
 independent of the lifecycle state.
 
-## Emulator project id
-`chatsnap-dev` (see `.firebaserc`). Overridable via `firebase use`.
+## Firebase project / app identity
+Wired to the real project **Photoame** (`photoame-d8adb`, number 1077673205909).
+- Bundle id: `com.photoame.app` (matches the registered iOS app + the real
+  `GoogleService-Info.plist`).
+- Storage bucket: `photoame-d8adb.firebasestorage.app` (new-style default for
+  projects created after Oct 2024, not `*.appspot.com`).
+- The real `GoogleService-Info.plist` lives at
+  `Chatsnap/Chatsnap/GoogleService-Info.plist` (git-ignored) so the target
+  bundles it; it must sit inside the synchronized source folder, not beside the
+  `.xcodeproj`.
+- The Xcode target/binary is still internally named `Chatsnap`; only the
+  user-facing display name and copy were rebranded to **Photoame**.
+
+## Info.plist standard keys
+`GENERATE_INFOPLIST_FILE = NO` (we ship a custom Info.plist for the Firebase and
+camera keys). That means Xcode does NOT auto-inject the standard bundle keys or
+apply `INFOPLIST_KEY_*` settings, so `Info.plist` carries `CFBundleIdentifier`,
+`CFBundleName`, `CFBundleExecutable`, version keys, etc. via `$(...)` build-setting
+variables that expand at build time. Verified the built `.app` reports
+`com.photoame.app` / "Photoame".
 
 ## Xcode project generation
 The project uses an Xcode 16+ file-system-synchronized group

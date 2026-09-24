@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const admin = require("firebase-admin");
 
-const PROJECT_ID = process.env.GCLOUD_PROJECT || "chatsnap-dev";
+const PROJECT_ID = process.env.GCLOUD_PROJECT || "photoame-d8adb";
 const HOST = process.env.CHATSNAP_EMULATOR_HOST || "localhost";
 
 // Point the Admin SDK at the emulators.
@@ -23,7 +23,8 @@ process.env.FIREBASE_STORAGE_EMULATOR_HOST ||= `${HOST}:9199`;
 const BOT_UID = "chatsnap-bot";
 const BOT_NAME = "Chatsnap Bot";
 const INVITE_CODE = "BOTBOT";
-const BUCKET = `${PROJECT_ID}.appspot.com`;
+// New-style default bucket for projects created in/after Oct 2024.
+const BUCKET = process.env.CHATSNAP_STORAGE_BUCKET || `${PROJECT_ID}.firebasestorage.app`;
 const TIMERS = [3, 5, 10, 0];
 
 admin.initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });

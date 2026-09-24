@@ -30,9 +30,9 @@ DECISIONS.md              ambiguities resolved during the build
 
 ## 1. Firebase project setup
 
-1. Create a Firebase project (e.g. `chatsnap-dev`) in the
+1. Create a Firebase project (e.g. `photoame-d8adb`) in the
    [Firebase console](https://console.firebase.google.com).
-2. Add an **iOS app** with bundle id `com.chatsnap.app`. Download its
+2. Add an **iOS app** with bundle id `com.photoame.app`. Download its
    `GoogleService-Info.plist`.
 3. Copy it into the app target (this file is git-ignored):
    ```bash
@@ -56,7 +56,7 @@ As a safety net, add a bucket lifecycle rule that deletes any object older than
 cat > /tmp/lifecycle.json <<'EOF'
 { "rule": [ { "action": {"type":"Delete"}, "condition": {"age": 31} } ] }
 EOF
-gsutil lifecycle set /tmp/lifecycle.json gs://<your-bucket>.appspot.com
+gsutil lifecycle set /tmp/lifecycle.json gs://photoame-d8adb.firebasestorage.app
 ```
 
 ## 2. APNs key upload (push)
