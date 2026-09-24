@@ -1,0 +1,14 @@
+{
+  "name": "chatsnap-seed",
+  "version": "0.1.0",
+  "description": "Bot-partner seeder so Chatsnap can be tested solo against the emulator.",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node seedBot.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  },
+  "private": true
+}
