@@ -38,6 +38,7 @@ final class AuthService: NSObject {
     var activePairId: String? { profile?.activePairId }
 
     func start() {
+        reconcileAuthBackend()
         authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
             Task { @MainActor in self.handleAuthChange(user) }
@@ -52,6 +53,27 @@ final class AuthService: NSObject {
             self.authResolved = true
             self.profileResolved = true
         }
+    }
+
+    private static let backendTagKey = "photoame.authBackendTag"
+
+    /// Clear any persisted Auth session that belongs to a *different* backend than
+    /// this launch is wired to. Firebase restores the last signed-in user from the
+    /// keychain regardless of which backend (emulator, or a given project) minted
+    /// its token; used against another backend that token is rejected on every
+    /// read/write — the profile never loads, so onboarding (age gate, display
+    /// name) repeats endlessly and self-writes fail with "insufficient
+    /// permissions". We treat *no stored tag* (first launch after this shipped) as
+    /// a mismatch too, so an already-stale session gets cleared once. Runs before
+    /// the auth state listener so it observes the cleared state.
+    private func reconcileAuthBackend() {
+        let current = FirebaseConfig.backendTag
+        let previous = UserDefaults.standard.string(forKey: Self.backendTagKey)
+        if previous != current, Auth.auth().currentUser != nil {
+            log.notice("auth backend changed (\(previous ?? "none", privacy: .public) -> \(current, privacy: .public)); clearing stale session")
+            try? Auth.auth().signOut()
+        }
+        UserDefaults.standard.set(current, forKey: Self.backendTagKey)
     }
 
     private func handleAuthChange(_ user: FirebaseAuth.User?) {

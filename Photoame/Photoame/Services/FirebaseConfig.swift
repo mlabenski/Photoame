@@ -33,10 +33,38 @@ enum FirebaseConfig {
         #endif
     }
 
+    /// Force a Debug build to talk to the real Firebase backend instead of the
+    /// local emulators — set `PHOTOAME_USE_PROD=1` in the Run scheme. Needed to
+    /// test push notifications, which the Functions emulator cannot deliver (no
+    /// FCM/APNs backend). See [[device-emulator-setup]].
+    static var useProduction: Bool {
+        ProcessInfo.processInfo.environment["PHOTOAME_USE_PROD"] == "1"
+    }
+
+    /// A stable identifier for the backend this launch is wired to: the Firebase
+    /// project id plus emulator-vs-prod (and the emulator host). `AuthService`
+    /// persists this across launches to detect a target switch — toggling
+    /// `PHOTOAME_USE_PROD`, changing emulator host, or a project change. A Firebase
+    /// Auth session cached in the keychain belongs to whichever backend minted it;
+    /// restored against a *different* backend its ID token is rejected, surfacing
+    /// as endless "Missing or insufficient permissions" and a profile that never
+    /// loads. Must be read after `configure()` so `FirebaseApp` is available.
+    static var backendTag: String {
+        let project = FirebaseApp.app()?.options.projectID ?? "unknown"
+        #if DEBUG
+        if useProduction { return "prod:\(project)" }
+        return "emu:\(emulatorHost):\(project)"
+        #else
+        return "prod:\(project)"
+        #endif
+    }
+
     static func configure() {
         FirebaseApp.configure()
         #if DEBUG
-        useEmulators()
+        if !useProduction {
+            useEmulators()
+        }
         #endif
     }
 
