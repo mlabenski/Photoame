@@ -48,8 +48,15 @@ struct CameraView: View {
                 }
                 VStack {
                     Spacer()
-                    shutterButton
-                        .padding(.bottom, 40)
+                    ZStack {
+                        shutterButton
+                        HStack {
+                            flashButton
+                            Spacer()
+                        }
+                        .padding(.leading, 44)
+                    }
+                    .padding(.bottom, 40)
                 }
             }
         }
@@ -78,6 +85,23 @@ struct CameraView: View {
             .accessibilityElement()
             .accessibilityLabel("Camera preview")
             .accessibilityHint("Double tap to flip the camera")
+    }
+
+    private var flashButton: some View {
+        let on = model.camera.flashEnabled
+        return Button {
+            model.camera.flashEnabled.toggle()
+        } label: {
+            Image(systemName: on ? "bolt.fill" : "bolt.slash.fill")
+                .font(.title3)
+                .foregroundStyle(on ? .yellow : .white)
+                .padding(12)
+                .background(.black.opacity(0.4), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Flash")
+        .accessibilityValue(on ? "On" : "Off")
+        .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 
     private var shutterButton: some View {

@@ -128,13 +128,18 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
         }
     }
 
-    func capturePhoto(front: Bool) async throws -> UIImage {
+    func capturePhoto(front: Bool, flashOn: Bool) async throws -> UIImage {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 self.captureContinuation = continuation
                 let settings = AVCapturePhotoSettings()
-                if !front, self.photoOutput.supportedFlashModes.contains(.auto) {
-                    settings.flashMode = .auto
+                // Back camera uses the hardware flash; front camera's "flash" is
+                // the white screen overlay handled in `CameraService`.
+                if !front {
+                    let desired: AVCaptureDevice.FlashMode = flashOn ? .on : .off
+                    if self.photoOutput.supportedFlashModes.contains(desired) {
+                        settings.flashMode = desired
+                    }
                 }
                 if let connection = self.photoOutput.connection(with: .video),
                    connection.isVideoMirroringSupported {
@@ -220,7 +225,9 @@ final class CameraService {
     private(set) var permissionDenied = false
     /// Drives the white screen-flash overlay used as a front-camera "flash".
     var showScreenFlash = false
-    var frontFlashEnabled = true
+    /// User-controlled flash. Governs the back camera's hardware flash and the
+    /// front camera's screen-flash overlay. Off by default.
+    var flashEnabled = false
 
     private let controller = CaptureSessionController()
 
@@ -262,12 +269,12 @@ final class CameraService {
     func focus(atPoint point: CGPoint) { controller.focus(atPoint: point) }
 
     func capturePhoto() async throws -> UIImage {
-        if isFrontCamera && frontFlashEnabled {
+        if isFrontCamera && flashEnabled {
             showScreenFlash = true
             try? await Task.sleep(nanoseconds: 120_000_000)
         }
         defer { showScreenFlash = false }
-        return try await controller.capturePhoto(front: isFrontCamera)
+        return try await controller.capturePhoto(front: isFrontCamera, flashOn: flashEnabled)
     }
 }
 
