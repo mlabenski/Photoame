@@ -33,12 +33,54 @@ enum FirebaseConfig {
         #endif
     }
 
-    /// Force a Debug build to talk to the real Firebase backend instead of the
-    /// local emulators — set `PHOTOAME_USE_PROD=1` in the Run scheme. Needed to
-    /// test push notifications, which the Functions emulator cannot deliver (no
-    /// FCM/APNs backend). See [[device-emulator-setup]].
+    private static let useProdDefaultsKey = "photoame.useProductionBackend"
+
+    /// Whether a Debug build should talk to the real Firebase backend instead of
+    /// the local emulators. Needed to test push notifications, which the Functions
+    /// emulator cannot deliver (no FCM/APNs backend). See [[device-emulator-setup]].
+    ///
+    /// Source of truth is a **persisted UserDefaults flag**, not the Run-scheme env
+    /// var: an env var is injected only when Xcode launches the app, so it silently
+    /// evaporates on any icon/OS relaunch (exactly what happens when you background
+    /// the app to watch for a push) and the build falls back to the emulator. The
+    /// persisted flag survives every launch. `PHOTOAME_USE_PROD` still works as the
+    /// first-run seed; after that the in-app toggle (`setUseProduction`) is
+    /// authoritative. Release builds always use production.
     static var useProduction: Bool {
-        ProcessInfo.processInfo.environment["PHOTOAME_USE_PROD"] == "1"
+        #if DEBUG
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: useProdDefaultsKey) != nil {
+            return defaults.bool(forKey: useProdDefaultsKey)
+        }
+        let seed = ProcessInfo.processInfo.environment["PHOTOAME_USE_PROD"] == "1"
+        defaults.set(seed, forKey: useProdDefaultsKey)
+        return seed
+        #else
+        return true
+        #endif
+    }
+
+    /// Persist a new backend choice. Takes effect on the next launch (Firebase is
+    /// configured once at process start and can't be re-pointed live). Debug only.
+    static func setUseProduction(_ useProd: Bool) {
+        UserDefaults.standard.set(useProd, forKey: useProdDefaultsKey)
+    }
+
+    /// The backend this running process actually wired up at launch — captured in
+    /// `configure()`. May differ from `useProduction` if the user just toggled the
+    /// pending choice but hasn't restarted yet.
+    // Written once in `configure()` at launch (main thread, before any
+    // concurrency), read thereafter — safe to treat as immutable at runtime.
+    nonisolated(unsafe) private(set) static var activeIsProduction = true
+
+    /// Human-readable description of the backend this session is talking to.
+    static var activeBackendDescription: String {
+        let project = FirebaseApp.app()?.options.projectID ?? "unknown"
+        #if DEBUG
+        return activeIsProduction ? "Production (\(project))" : "Emulator (\(emulatorHost))"
+        #else
+        return "Production (\(project))"
+        #endif
     }
 
     /// A stable identifier for the backend this launch is wired to: the Firebase
@@ -52,7 +94,7 @@ enum FirebaseConfig {
     static var backendTag: String {
         let project = FirebaseApp.app()?.options.projectID ?? "unknown"
         #if DEBUG
-        if useProduction { return "prod:\(project)" }
+        if activeIsProduction { return "prod:\(project)" }
         return "emu:\(emulatorHost):\(project)"
         #else
         return "prod:\(project)"
@@ -62,7 +104,8 @@ enum FirebaseConfig {
     static func configure() {
         FirebaseApp.configure()
         #if DEBUG
-        if !useProduction {
+        activeIsProduction = useProduction
+        if !activeIsProduction {
             useEmulators()
         }
         #endif

@@ -10,6 +10,12 @@ struct SettingsView: View {
     @State private var confirmDelete = false
     @State private var showReport = false
 
+    #if DEBUG
+    // Pending backend choice (persisted; applies on next launch).
+    @State private var useProductionBackend = FirebaseConfig.useProduction
+    @State private var backendChanged = false
+    #endif
+
     // Placeholder URLs (see README).
     private let privacyURL = URL(string: "https://photoame.example.com/privacy")!
     private let supportURL = URL(string: "https://photoame.example.com/support")!
@@ -67,6 +73,10 @@ struct SettingsView: View {
             } footer: {
                 Text("Deleting your account ends your pair and permanently removes all of your data.")
             }
+
+            #if DEBUG
+            developerSection
+            #endif
         }
         .confirmationDialog("End your pair?", isPresented: $confirmEndPair, titleVisibility: .visible) {
             Button("End pair", role: .destructive) { model.endPair(); dismiss() }
@@ -98,6 +108,28 @@ struct SettingsView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(model.errorMessage ?? "") }
     }
+
+    #if DEBUG
+    @ViewBuilder
+    private var developerSection: some View {
+        Section {
+            Toggle("Use production backend", isOn: Binding(
+                get: { useProductionBackend },
+                set: { newValue in
+                    useProductionBackend = newValue
+                    FirebaseConfig.setUseProduction(newValue)
+                    backendChanged = (newValue != FirebaseConfig.activeIsProduction)
+                }))
+            LabeledContent("This session", value: FirebaseConfig.activeBackendDescription)
+        } header: {
+            Text("Developer")
+        } footer: {
+            Text(backendChanged
+                 ? "Quit and reopen the app to switch backends. You'll be signed out (the session belongs to the other backend)."
+                 : "The emulator can't deliver push notifications. Switch to production to test them on a device. This choice survives app relaunches.")
+        }
+    }
+    #endif
 }
 
 /// Collect a report reason + optional detail.
