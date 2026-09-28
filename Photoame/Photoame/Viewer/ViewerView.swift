@@ -6,6 +6,9 @@ struct ViewerView: View {
     let pairId: String
     let snapId: String
     @Bindable var session: PairSessionViewModel
+    /// Called when the user taps the photo to skip it — advances to the next
+    /// unopened snap if there is one, otherwise returns to the camera.
+    var onSkip: () -> Void = {}
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
@@ -108,10 +111,12 @@ struct ViewerView: View {
                 keepBar(model)
             }
         }
-        // Tap anywhere to dismiss an untimed ("until dismissed") snap.
+        // Tap anywhere to skip this snap and move on (to the next unopened snap,
+        // or back to the camera). Works whether or not a timer is counting down.
         .contentShape(Rectangle())
         .onTapGesture {
-            if model.countdown == nil { model.finishViewing() }
+            model.discard()
+            onSkip()
         }
     }
 

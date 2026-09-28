@@ -13,6 +13,11 @@ final class CameraViewModel {
     let camera = CameraService()
     private(set) var phase: Phase = .live
     var caption = ""
+    /// Caption center, normalized (0...1) within the displayed photo. Defaults to
+    /// the lower-middle; the user can drag it anywhere on the image.
+    var captionPosition = CGPoint(x: 0.5, y: 0.85)
+    /// Caption size multiplier, driven by pinch-to-zoom in the review pane.
+    var captionScale: CGFloat = 1
     var timerSeconds = 5 // default 5s; 0 == "until dismissed"
     private(set) var sending = false
     var errorMessage: String?
@@ -29,10 +34,16 @@ final class CameraViewModel {
 
     static let timerOptions = [3, 5, 10, 0] // 0 renders as "∞ / until dismissed"
 
-    func capture() {
+    /// - Parameter previewAspect: the live preview's aspect ratio (width / height),
+    ///   so the capture can be center-cropped to match what was framed on screen.
+    ///   `nil` leaves the full sensor frame uncropped.
+    func capture(previewAspect: CGFloat?) {
         Task {
             do {
-                let image = try await camera.capturePhoto()
+                var image = try await camera.capturePhoto()
+                if let previewAspect {
+                    image = ImageProcessing.cropCentered(image, toAspect: previewAspect)
+                }
                 phase = .review(image)
             } catch {
                 errorMessage = error.localizedDescription
@@ -41,13 +52,21 @@ final class CameraViewModel {
     }
 
     func retake() {
-        caption = ""
+        resetCaption()
         phase = .live
+    }
+
+    private func resetCaption() {
+        caption = ""
+        captionPosition = CGPoint(x: 0.5, y: 0.85)
+        captionScale = 1
     }
 
     func send() {
         guard case let .review(image) = phase else { return }
-        guard let prepared = ImageProcessing.prepareForSend(image, caption: caption) else {
+        guard let prepared = ImageProcessing.prepareForSend(
+            image, caption: caption,
+            captionPosition: captionPosition, captionScale: captionScale) else {
             errorMessage = "Could not encode the photo."
             return
         }
@@ -60,7 +79,7 @@ final class CameraViewModel {
                     pairId: pairId, senderUid: senderUid,
                     imageData: prepared.data, isHEIC: prepared.isHEIC,
                     caption: caption, timerSeconds: timer)
-                self.caption = ""
+                resetCaption()
                 phase = .live
             } catch {
                 errorMessage = error.localizedDescription

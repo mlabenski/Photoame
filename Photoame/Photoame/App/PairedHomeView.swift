@@ -27,17 +27,51 @@ struct PairedHomeView: View {
     }
 
     private func content(camera: CameraViewModel, session: PairSessionViewModel) -> some View {
-        ZStack(alignment: .top) {
+        // The inbox affordance only belongs on the live camera — during capture
+        // review the same space holds the caption editor and send controls.
+        let isLive: Bool = { if case .live = camera.phase { return true }; return false }()
+
+        return ZStack(alignment: .top) {
             CameraView(model: camera)
                 .ignoresSafeArea()
 
             topBar(session: session)
 
-            VStack {
-                Spacer()
-                inboxHandle(session: session)
+            if isLive {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        inboxHandle(session: session)
+                    }
+                    .padding(.horizontal)
+                }
+                // Swipe up anywhere on the live camera to open the inbox.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 24).onEnded { value in
+                        if value.translation.height < -50,
+                           abs(value.translation.width) < abs(value.translation.height) {
+                            showInbox = true
+                        }
+                    }
+                )
+            }
+
+            if let alert = session.incomingAlert {
+                VStack {
+                    SnapAlertBanner(alert: alert) {
+                        session.incomingAlert = nil
+                        openedSnapId = alert.snapId
+                    } onDismiss: {
+                        session.incomingAlert = nil
+                    }
+                    Spacer()
+                }
+                .zIndex(1)
             }
         }
+        .animation(.spring(response: 0.42, dampingFraction: 0.82),
+                   value: session.incomingAlert)
         .sheet(isPresented: $showInbox) {
             InboxView(session: session) { snapId in
                 showInbox = false
@@ -55,7 +89,11 @@ struct PairedHomeView: View {
             get: { openedSnapId.map(IdentifiedString.init) },
             set: { openedSnapId = $0?.value })
         ) { identified in
-            ViewerView(pairId: pairId, snapId: identified.value, session: session)
+            ViewerView(pairId: pairId, snapId: identified.value, session: session) {
+                // Skip: hop to the next unopened snap, or dismiss to the camera.
+                let next = session.unopenedReceived.first { $0.id != identified.value }
+                openedSnapId = next?.id
+            }
         }
         // Deep-link from a tapped "New snap" push opens the viewer directly.
         .onChange(of: env.push.pendingDeepLink) { _, link in
@@ -112,11 +150,7 @@ struct PairedHomeView: View {
         .padding(.bottom, 8)
         .accessibilityLabel("Open inbox")
         .accessibilityValue("\(session.unopenedReceived.count) new snaps")
-        .gesture(
-            DragGesture(minimumDistance: 20).onEnded { value in
-                if value.translation.height < -30 { showInbox = true }
-            }
-        )
+        .accessibilityHint("Or swipe up to open")
     }
 
     private func setup() {
