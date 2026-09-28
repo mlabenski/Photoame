@@ -52,14 +52,16 @@ struct SettingsView: View {
                 Button("Save name") { model.saveDisplayName() }
             }
 
-            Section("Partner") {
-                LabeledContent("Paired with", value: model.partnerName)
-            }
+            if model.isPaired {
+                Section("Partner") {
+                    LabeledContent("Paired with", value: model.partnerName)
+                }
 
-            Section("Safety") {
-                Button("End pair", role: .destructive) { confirmEndPair = true }
-                Button("Block \(model.partnerName)", role: .destructive) { confirmBlock = true }
-                Button("Report \(model.partnerName)") { showReport = true }
+                Section("Safety") {
+                    Button("End pair", role: .destructive) { confirmEndPair = true }
+                    Button("Block \(model.partnerName)", role: .destructive) { confirmBlock = true }
+                    Button("Report \(model.partnerName)") { showReport = true }
+                }
             }
 
             Section {

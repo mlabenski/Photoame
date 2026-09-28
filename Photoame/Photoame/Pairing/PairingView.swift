@@ -4,6 +4,7 @@ struct PairingView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: PairingViewModel?
     @State private var mode: Mode = .choose
+    @State private var showSettings = false
 
     enum Mode { case choose, create, enter }
 
@@ -39,13 +40,14 @@ struct PairingView: View {
         .padding(24)
         .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Sign out") { try? env.auth.signOut() }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .accessibilityLabel("More")
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape.fill")
+                            .accessibilityLabel("Settings")
                     }
                 }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
             }
             .alert("Couldn't connect",
                    isPresented: .init(get: { model.errorMessage != nil },

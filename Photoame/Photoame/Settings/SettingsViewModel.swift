@@ -8,6 +8,7 @@ final class SettingsViewModel {
     private(set) var partnerName = "your partner"
     private(set) var partnerUid: String?
     private(set) var pairId: String?
+    var isPaired: Bool { pairId != nil }
     var busy = false
     var errorMessage: String?
 
