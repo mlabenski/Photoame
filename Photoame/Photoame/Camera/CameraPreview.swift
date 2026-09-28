@@ -12,6 +12,17 @@ final class CameraPreviewHandle {
     func devicePoint(for point: CGPoint) -> CGPoint? {
         view?.devicePoint(for: point)
     }
+
+    /// The visible preview's aspect ratio (width / height). Callers crop a capture
+    /// to this so the sent photo matches the `.resizeAspectFill` preview framing.
+    /// `nil` before layout. Read on the main actor (it touches `UIView.bounds`).
+    @MainActor
+    var aspectRatio: CGFloat? {
+        guard let bounds = view?.bounds, bounds.width > 0, bounds.height > 0 else {
+            return nil
+        }
+        return bounds.width / bounds.height
+    }
 }
 
 /// Hosts an `AVCaptureVideoPreviewLayer` for the shared capture session.

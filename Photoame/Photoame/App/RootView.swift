@@ -26,6 +26,11 @@ struct RootView: View {
         }
         .animation(.default, value: env.auth.uid)
         .animation(.default, value: env.auth.activePairId)
+        .task(id: env.auth.uid) {
+            // Once signed in, register for push and store the FCM token so the
+            // paired sender's snaps can notify this device. Re-runs on uid change.
+            if env.auth.uid != nil { await env.push.onSignedIn() }
+        }
         .onChange(of: env.auth.activePairId) { _, newValue in
             // When a pair ends, purge the local kept gallery (all shared data gone).
             if newValue == nil { env.kept.purgeAll() }

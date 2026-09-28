@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(plutil -extract *)",
+      "Bash(xcodebuild -list *)",
+      "Bash(xcodebuild -showBuildSettings *)"
+    ]
+  }
+}

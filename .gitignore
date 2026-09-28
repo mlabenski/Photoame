@@ -28,3 +28,10 @@ functions/lib/
 functions/coverage/
 seed/node_modules/
 npm-debug.log*
+
+# Claude Code machine-local settings (scratchpad paths, local IPs)
+.claude/settings.local.json
+
+# Local decision / assessment notes — kept out of the repo
+/DECISIONS.md
+/docs/

@@ -4,7 +4,7 @@
   "description": "Photoame Cloud Functions (all product rules live here).",
   "main": "lib/index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
     "build": "tsc",
@@ -20,7 +20,7 @@
     "firebase-functions": "^6.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^22.9.0",
     "typescript": "^5.5.4",
     "vitest": "^2.1.8"
   },

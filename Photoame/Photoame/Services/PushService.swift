@@ -19,11 +19,29 @@ final class PushService: NSObject {
     /// Set when a snap notification is tapped; the root view consumes and clears it.
     var pendingDeepLink: SnapDeepLink?
 
-    private var lastToken: String?
+    /// Most recent FCM token, cached so it can be written once a user is signed
+    /// in even if it arrived earlier (the MessagingDelegate callback commonly
+    /// fires before authentication completes).
+    private var latestToken: String?
+    /// "uid|token" of the last successful write, to avoid redundant setData.
+    private var syncedKey: String?
 
     func configure() {
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
+    }
+
+    /// Call once the user is authenticated: request notification permission,
+    /// register for APNs, and flush any FCM token that arrived before sign-in.
+    /// This is the entry point that actually gets a token stored — without it the
+    /// app never registers and the recipient has no `fcmToken`, so pushes are
+    /// dropped server-side with "No fcmToken for <uid>; skipping push."
+    func onSignedIn() async {
+        await requestAuthorization()
+        if latestToken == nil {
+            latestToken = try? await Messaging.messaging().token()
+        }
+        syncToken(latestToken)
     }
 
     func requestAuthorization() async {
@@ -32,10 +50,15 @@ final class PushService: NSObject {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
-    /// Persist the FCM token under the signed-in user's private push doc.
+    /// Persist the FCM token under the signed-in user's private push doc. Caches
+    /// the token so a later sign-in can still write it; no-ops (rather than
+    /// dropping the token) when no user is signed in yet.
     func syncToken(_ token: String?) {
-        guard let token, let uid = Auth.auth().currentUser?.uid, token != lastToken else { return }
-        lastToken = token
+        if let token { latestToken = token }
+        guard let token = latestToken, let uid = Auth.auth().currentUser?.uid else { return }
+        let key = "\(uid)|\(token)"
+        guard key != syncedKey else { return }
+        syncedKey = key
         Firestore.firestore().document("users/\(uid)/private/push")
             .setData(["fcmToken": token], merge: true)
     }

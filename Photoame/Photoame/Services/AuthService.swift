@@ -69,9 +69,27 @@ final class AuthService: NSObject {
     private func reconcileAuthBackend() {
         let current = FirebaseConfig.backendTag
         let previous = UserDefaults.standard.string(forKey: Self.backendTagKey)
-        if previous != current, Auth.auth().currentUser != nil {
-            log.notice("auth backend changed (\(previous ?? "none", privacy: .public) -> \(current, privacy: .public)); clearing stale session")
-            try? Auth.auth().signOut()
+        if previous != current {
+            if Auth.auth().currentUser != nil {
+                log.notice("auth backend changed (\(previous ?? "none", privacy: .public) -> \(current, privacy: .public)); clearing stale session")
+                try? Auth.auth().signOut()
+            }
+            // Also drop Firestore's on-disk cache. Production uses the default
+            // *persistent* cache (only the emulator path opts into an in-memory
+            // one), so pair/profile documents minted against the previous backend
+            // can be served to this fresh session — rendering phantom "paired"
+            // UI while live writes (e.g. sending a snap, which the Storage rules
+            // authorize by reading pair membership) fail with permission-denied.
+            // Safe to call here: this runs before the auth listener is attached,
+            // so no Firestore read has started the client yet. Best-effort — worst
+            // case we keep the stale cache for this launch. See
+            // [[auth-backend-session-bleed]].
+            let log = self.log
+            Firestore.firestore().clearPersistence { error in
+                if let error {
+                    log.notice("clearPersistence failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }
         }
         UserDefaults.standard.set(current, forKey: Self.backendTagKey)
     }

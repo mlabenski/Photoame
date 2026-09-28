@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
 import FirebaseFunctions
@@ -55,9 +56,8 @@ actor SnapRepository: SnapRepositoryProtocol {
         let path = "snaps/\(pairId)/\(snapRef.documentID).\(ext)"
 
         // 2. Upload the blob first — rules require it to exist before the doc read.
-        let meta = StorageMetadata()
-        meta.contentType = isHEIC ? "image/heic" : "image/jpeg"
-        _ = try await storage.reference(withPath: path).putDataAsync(imageData, metadata: meta)
+        try await uploadWithAuthRetry(imageData, to: path,
+                                      contentType: isHEIC ? "image/heic" : "image/jpeg")
 
         // 3. Create the snap doc (state "sent"); the trigger takes it from here.
         try await snapRef.setData([
@@ -68,6 +68,35 @@ actor SnapRepository: SnapRepositoryProtocol {
             "state": SnapState.sent.rawValue,
             "createdAt": FieldValue.serverTimestamp(),
         ])
+    }
+
+    /// Upload a blob, retrying once on an authorization denial.
+    ///
+    /// The Storage create rule authorizes the sender by reading the pair's
+    /// members out of Firestore (a cross-service rule). Two transient conditions
+    /// surface that read as an "unauthorized" storage error even though the user
+    /// is a legitimate member: a stale ID token cached from a previous
+    /// backend/session (see [[auth-backend-session-bleed]]), and the brief window
+    /// right after pairing before the pair doc is visible to the Storage rules
+    /// evaluator. Forcing a fresh token and retrying once clears both without
+    /// bothering the user with a "Something went wrong" alert.
+    private func uploadWithAuthRetry(_ data: Data, to path: String,
+                                     contentType: String) async throws {
+        // Build fresh (non-Sendable) reference + metadata per attempt so nothing
+        // crosses a suspension point.
+        func put() async throws {
+            let meta = StorageMetadata()
+            meta.contentType = contentType
+            _ = try await storage.reference(withPath: path).putDataAsync(data, metadata: meta)
+        }
+        do {
+            try await put()
+        } catch let error as NSError where error.domain == StorageErrorDomain
+            && error.code == StorageErrorCode.unauthorized.rawValue {
+            repoLog.notice("snap upload unauthorized; refreshing ID token and retrying once")
+            _ = try? await Auth.auth().currentUser?.getIDTokenResult(forcingRefresh: true)
+            try await put()
+        }
     }
 
     func downloadImage(path: String) async throws -> Data {

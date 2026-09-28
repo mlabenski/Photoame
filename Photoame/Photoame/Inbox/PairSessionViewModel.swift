@@ -10,12 +10,23 @@ final class PairSessionViewModel {
     private(set) var snaps: [Snap] = []
     private(set) var partnerName = "Partner"
 
+    /// The latest snap that should surface an in-app banner. Set when a new,
+    /// unopened received snap arrives while the session is live; the view
+    /// consumes it (to open the viewer) and clears it after presenting.
+    var incomingAlert: IncomingSnapAlert?
+
     let pairId: String
     let uid: String
     private let repository: any SnapRepositoryProtocol
     private var streamTask: Task<Void, Never>?
     private var partnerListener: ListenerRegistration?
     private let log = Logger(subsystem: "com.photoame.app", category: "pair")
+
+    /// Snap ids seen so far, so a stream update can tell genuinely new arrivals
+    /// from re-emissions of the existing list. Seeded on the first update so the
+    /// initial backlog never triggers a banner.
+    private var knownSnapIds: Set<String> = []
+    private var didSeedKnownIds = false
 
     init(pairId: String, uid: String, repository: any SnapRepositoryProtocol) {
         self.pairId = pairId
@@ -50,6 +61,7 @@ final class PairSessionViewModel {
             for await snaps in stream {
                 guard let self else { return }
                 self.snaps = snaps
+                self.detectIncomingSnap(in: snaps)
             }
         }
     }
@@ -59,6 +71,22 @@ final class PairSessionViewModel {
         streamTask = nil
         partnerListener?.remove()
         partnerListener = nil
+    }
+
+    /// Raise an in-app alert for the newest unopened received snap that wasn't in
+    /// the previously known set. Seeds silently on the first update so an existing
+    /// backlog of unread snaps doesn't fire a banner on launch.
+    private func detectIncomingSnap(in snaps: [Snap]) {
+        let previous = knownSnapIds
+        knownSnapIds = Set(snaps.compactMap(\.id))
+        guard didSeedKnownIds else { didSeedKnownIds = true; return }
+
+        let arrival = snaps.first { snap in
+            guard let id = snap.id, !previous.contains(id) else { return false }
+            return snap.senderUid != uid && (snap.state == .sent || snap.state == .delivered)
+        }
+        guard let arrival, let id = arrival.id else { return }
+        incomingAlert = IncomingSnapAlert(snapId: id, senderName: partnerName)
     }
 
     private func resolvePartnerName() {
