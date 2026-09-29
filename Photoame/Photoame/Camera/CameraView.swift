@@ -141,13 +141,19 @@ struct CameraView: View {
     // MARK: Review
 
     private func reviewPane(_ image: UIImage) -> some View {
-        VStack(spacing: 0) {
+        // Show the captured photo full-bleed, exactly matching the `.resizeAspectFill`
+        // live preview (the capture is already center-cropped to the preview aspect),
+        // with the caption/timer/send controls overlaid at the bottom. Displaying it
+        // in a split top pane made a full-screen-aspect photo shrink to fit and look
+        // "zoomed out" with wide side gaps.
+        ZStack(alignment: .bottom) {
             GeometryReader { geo in
                 ZStack {
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFit()
+                        .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
                     if !model.caption.isEmpty {
                         captionOverlay(imageSize: image.size, container: geo.size)
                     }
@@ -155,37 +161,47 @@ struct CameraView: View {
                 .frame(width: geo.size.width, height: geo.size.height)
                 .contentShape(Rectangle())
             }
+            .ignoresSafeArea()
 
-            VStack(spacing: 16) {
-                TextField("Add a caption", text: Binding(
-                    get: { model.caption },
-                    set: { model.caption = String($0.prefix(80)) }))
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel("Caption, up to 80 characters")
-
-                if !model.caption.isEmpty {
-                    Text("Drag the caption to move it · pinch to resize")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-
-                timerPicker
-
-                // Retake now lives in the top bar (the X); this row is just Send.
-                Button(action: model.send) {
-                    Group {
-                        if model.sending { ProgressView() }
-                        else { Label("Send", systemImage: "paperplane.fill") }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.yellow).foregroundStyle(.black)
-                .disabled(model.sending)
-            }
-            .padding()
-            .background(.black)
+            reviewControls
         }
+    }
+
+    private var reviewControls: some View {
+        VStack(spacing: 16) {
+            TextField("Add a caption", text: Binding(
+                get: { model.caption },
+                set: { model.caption = String($0.prefix(80)) }))
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Caption, up to 80 characters")
+
+            if !model.caption.isEmpty {
+                Text("Drag the caption to move it · pinch to resize")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+
+            timerPicker
+
+            // Retake now lives in the top bar (the X); this row is just Send.
+            Button(action: model.send) {
+                Group {
+                    if model.sending { ProgressView() }
+                    else { Label("Send", systemImage: "paperplane.fill") }
+                }
+                .frame(maxWidth: .infinity, minHeight: 50)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.yellow).foregroundStyle(.black)
+            .disabled(model.sending)
+        }
+        .padding()
+        .padding(.bottom, 8)
+        .background(
+            LinearGradient(colors: [.clear, .black.opacity(0.85)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+        )
     }
 
     /// The caption rendered over the photo, positioned by `model.captionPosition`
