@@ -124,14 +124,14 @@ struct ViewerView: View {
         HStack {
             Button { model.keep() } label: {
                 Label(model.iKept ? "Kept — waiting for partner" : "Keep",
-                      systemImage: model.iKept ? "heart.fill" : "heart")
+                      systemImage: model.iKept ? "bookmark.fill" : "bookmark")
                     .font(.headline)
                     .padding(.horizontal, 18).padding(.vertical, 12)
                     .background(.black.opacity(0.5), in: Capsule())
             }
-            .foregroundStyle(model.iKept ? .pink : .white)
+            .foregroundStyle(model.iKept ? .yellow : .white)
             .disabled(model.iKept)
-            .accessibilityHint("Both of you must Keep for it to be saved to the Us gallery")
+            .accessibilityHint("Both of you must Keep for it to be saved to the Kept gallery")
         }
         .padding(.bottom, 24)
     }
@@ -181,8 +181,8 @@ struct ViewerView: View {
 
     private func keptState() -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "heart.fill").font(.system(size: 48)).foregroundStyle(.pink)
-            Text("Saved to your Us gallery").font(.headline).foregroundStyle(.white)
+            Image(systemName: "bookmark.fill").font(.system(size: 48)).foregroundStyle(.yellow)
+            Text("Saved to your Kept gallery").font(.headline).foregroundStyle(.white)
             Button("Done") { dismiss() }
                 .buttonStyle(.bordered).tint(.white).padding(.top, 8)
         }
