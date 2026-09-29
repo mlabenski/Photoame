@@ -171,24 +171,17 @@ struct CameraView: View {
 
                 timerPicker
 
-                HStack(spacing: 16) {
-                    Button(role: .cancel) { model.retake() } label: {
-                        Label("Retake", systemImage: "arrow.uturn.backward")
-                            .frame(maxWidth: .infinity, minHeight: 50)
+                // Retake now lives in the top bar (the X); this row is just Send.
+                Button(action: model.send) {
+                    Group {
+                        if model.sending { ProgressView() }
+                        else { Label("Send", systemImage: "paperplane.fill") }
                     }
-                    .buttonStyle(.bordered)
-
-                    Button(action: model.send) {
-                        Group {
-                            if model.sending { ProgressView() }
-                            else { Label("Send", systemImage: "paperplane.fill") }
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.yellow).foregroundStyle(.black)
-                    .disabled(model.sending)
+                    .frame(maxWidth: .infinity, minHeight: 50)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(.yellow).foregroundStyle(.black)
+                .disabled(model.sending)
             }
             .padding()
             .background(.black)

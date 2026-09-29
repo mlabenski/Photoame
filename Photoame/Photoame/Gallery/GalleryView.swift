@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The in-app "Us" gallery of snaps both people kept. Images are read from the
+/// The in-app Kept gallery of snaps both people kept. Images are read from the
 /// local sandbox store; any kept snap not yet downloaded is fetched once and
 /// saved locally. Nothing here can be exported to Photos.
 struct GalleryView: View {
@@ -20,7 +20,7 @@ struct GalleryView: View {
                     grid
                 }
             }
-            .navigationTitle("Us")
+            .navigationTitle("Kept")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -59,7 +59,7 @@ struct GalleryView: View {
     private var empty: some View {
         ContentUnavailableView(
             "Nothing kept yet",
-            systemImage: "heart",
+            systemImage: "bookmark",
             description: Text("When you both tap Keep on a snap, it lands here."))
     }
 

@@ -77,7 +77,7 @@ struct InboxView: View {
             }
             Spacer()
             if snap.state == .kept {
-                Image(systemName: "heart.fill").foregroundStyle(.pink)
+                Image(systemName: "bookmark.fill").foregroundStyle(.yellow)
             }
         }
         .accessibilityElement(children: .combine)
@@ -90,7 +90,7 @@ struct InboxView: View {
         case .delivered: return "checkmark.circle"
         case .opened: return "eye.fill"
         case .replayed: return "arrow.clockwise.circle.fill"
-        case .kept: return "heart.fill"
+        case .kept: return "bookmark.fill"
         case .screenshotted: return "camera.viewfinder"
         }
     }
@@ -98,7 +98,7 @@ struct InboxView: View {
     private func color(for state: SentDisplayState) -> Color {
         switch state {
         case .screenshotted: return .red
-        case .kept: return .pink
+        case .kept: return .yellow
         case .opened, .replayed: return .green
         default: return .secondary
         }

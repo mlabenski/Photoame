@@ -1,6 +1,6 @@
 # Photoame
 
-Photoame is an iPhone photo-messaging app for a couple: each account is paired
+Photoame is an iPhone photo-messaging app for two people: each account is paired
 with exactly **one** other person, photos arrive by push, are viewed once (plus
 one replay) and then disappear unless **both** people choose to keep them.
 Photoame photos never touch the Photos library.
@@ -147,7 +147,7 @@ Paste the following into App Store Connect → App Review Information.
 > - After signing in you are already paired with "Photoame Bot".
 > - Wait up to a minute for the first snap, tap the inbox pill, then tap the snap
 >   to open it. Try **Keep** (the bot keeps automatically, so it lands in the
->   "Us" gallery), and take a screenshot to see the sender notice.
+>   Kept gallery), and take a screenshot to see the sender notice.
 >
 > **Photos & privacy:** Photos are captured in memory and uploaded directly; the
 > app has **no** Photos-library entitlement and never saves to the camera roll.

@@ -35,7 +35,7 @@ struct PairedHomeView: View {
             CameraView(model: camera)
                 .ignoresSafeArea()
 
-            topBar(session: session)
+            topBar(camera: camera, session: session)
 
             if isLive {
                 VStack {
@@ -104,15 +104,29 @@ struct PairedHomeView: View {
         }
     }
 
-    private func topBar(session: PairSessionViewModel) -> some View {
-        HStack {
-            Button { showSettings = true } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.title3)
-                    .padding(10)
-                    .background(.black.opacity(0.4), in: Circle())
+    private func topBar(camera: CameraViewModel, session: PairSessionViewModel) -> some View {
+        // While reviewing a captured photo the leading control becomes a retake
+        // (X) button; on the live camera it's the Settings gear.
+        let isReviewing: Bool = { if case .review = camera.phase { return true }; return false }()
+
+        return HStack {
+            if isReviewing {
+                Button { camera.retake() } label: {
+                    Image(systemName: "xmark")
+                        .font(.title3)
+                        .padding(10)
+                        .background(.black.opacity(0.4), in: Circle())
+                }
+                .accessibilityLabel("Retake")
+            } else {
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.title3)
+                        .padding(10)
+                        .background(.black.opacity(0.4), in: Circle())
+                }
+                .accessibilityLabel("Settings")
             }
-            .accessibilityLabel("Settings")
 
             Spacer()
 
@@ -124,12 +138,12 @@ struct PairedHomeView: View {
             Spacer()
 
             Button { showGallery = true } label: {
-                Image(systemName: "heart.fill")
+                Image(systemName: "bookmark.fill")
                     .font(.title3)
                     .padding(10)
                     .background(.black.opacity(0.4), in: Circle())
             }
-            .accessibilityLabel("Us gallery")
+            .accessibilityLabel("Kept gallery")
         }
         .foregroundStyle(.white)
         .padding(.horizontal)

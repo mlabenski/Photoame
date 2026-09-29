@@ -16,7 +16,7 @@ struct AuthView: View {
                     .accessibilityHidden(true)
                 Text("Photoame")
                     .font(.largeTitle.bold())
-                Text("Photos, just for the two of you.")
+                Text("Disappearing photos, sent to one person.")
                     .font(.headline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

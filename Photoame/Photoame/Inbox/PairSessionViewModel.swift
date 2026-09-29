@@ -44,7 +44,7 @@ final class PairSessionViewModel {
         snaps.filter { $0.senderUid == uid }
     }
 
-    /// Kept snaps (both members kept) — feed for the "Us" gallery download.
+    /// Kept snaps (both members kept) — feed for the Kept gallery download.
     var keptSnaps: [Snap] {
         snaps.filter { $0.state == .kept }
     }
