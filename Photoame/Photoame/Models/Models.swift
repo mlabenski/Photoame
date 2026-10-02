@@ -1,11 +1,14 @@
 import Foundation
 import FirebaseFirestore
 
-/// A Photoame user profile (`users/{uid}`). Only `displayName` and
+/// A Photoame user profile (`users/{uid}`). Only `displayName`, `photoURL`, and
 /// `ageConfirmedAt` are ever written by the client.
 struct UserProfile: Codable, Identifiable {
     @DocumentID var id: String?
     var displayName: String
+    /// A download URL for the user's profile picture (avatar), or nil. The blob
+    /// lives in Storage at `avatars/{uid}.jpg`; only the URL is mirrored here.
+    var photoURL: String?
     var activePairId: String?
     var ageConfirmedAt: Date?
     var createdAt: Date?

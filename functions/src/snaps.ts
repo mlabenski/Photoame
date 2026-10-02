@@ -147,14 +147,15 @@ export async function reportScreenshotHandler(
   }
   await snapRef.update({ screenshotAt: Timestamp.now() });
 
-  const takerName =
-    ((await db.doc(`users/${uid}`).get()).get("displayName") as string) ??
-    "Someone";
+  const takerDoc = await db.doc(`users/${uid}`).get();
+  const takerName = (takerDoc.get("displayName") as string) ?? "Someone";
+  const takerPhotoURL = takerDoc.get("photoURL") as string | undefined;
   await sendPushToUser(
     senderUid,
     "Screenshot",
     `${takerName} took a screenshot.`,
-    { type: "screenshot", pairId: req.data?.pairId ?? "", snapId: req.data?.snapId ?? "" }
+    { type: "screenshot", pairId: req.data?.pairId ?? "", snapId: req.data?.snapId ?? "" },
+    takerPhotoURL
   );
   return { reported: true };
 }
@@ -183,15 +184,18 @@ export const onSnapCreated = onDocumentCreated(
     const recipient = members.find((m) => m !== senderUid);
     if (!recipient) return;
 
+    const senderDoc = await db.doc(`users/${senderUid}`).get();
     const senderName =
-      ((await db.doc(`users/${senderUid}`).get()).get("displayName") as string) ??
-      "your partner";
+      (senderDoc.get("displayName") as string) ?? "your partner";
+    const senderPhotoURL = senderDoc.get("photoURL") as string | undefined;
 
-    await sendPushToUser(recipient, "New snap", `New snap from ${senderName}`, {
-      type: "snap",
-      pairId,
-      snapId,
-    });
+    await sendPushToUser(
+      recipient,
+      "New snap",
+      `New snap from ${senderName}`,
+      { type: "snap", pairId, snapId },
+      senderPhotoURL
+    );
 
     await snap.ref.update({ state: "delivered" });
   }

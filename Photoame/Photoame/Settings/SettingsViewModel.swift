@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import FirebaseFirestore
 
 @MainActor
@@ -7,10 +8,16 @@ final class SettingsViewModel {
     var displayName = ""
     private(set) var partnerName = "your partner"
     private(set) var partnerUid: String?
+    private(set) var partnerPhotoURL: String?
     private(set) var pairId: String?
     var isPaired: Bool { pairId != nil }
     var busy = false
+    var uploadingAvatar = false
     var errorMessage: String?
+
+    /// Your own avatar URL, read live from the profile so it updates right after
+    /// an upload (the profile listener rewrites `auth.profile`).
+    var ownPhotoURL: String? { auth.profile?.photoURL }
 
     private let auth: AuthService
     private let functions: FunctionsClient
@@ -36,6 +43,7 @@ final class SettingsViewModel {
             if let name = userDoc?.get("displayName") as? String, !name.isEmpty {
                 self?.partnerName = name
             }
+            self?.partnerPhotoURL = userDoc?.get("photoURL") as? String
         }
     }
 
@@ -43,6 +51,22 @@ final class SettingsViewModel {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         Task { try? await auth.setDisplayName(trimmed) }
+    }
+
+    /// Downscale and upload a newly picked profile picture. Raw image data comes
+    /// from the view's PhotosPicker; processing to a square JPEG happens here.
+    func updateAvatar(imageData: Data) {
+        guard let image = UIImage(data: imageData),
+              let prepared = ImageProcessing.prepareAvatar(image) else {
+            errorMessage = "That image couldn't be used."
+            return
+        }
+        uploadingAvatar = true
+        Task {
+            do { try await auth.updateAvatar(imageData: prepared) }
+            catch { errorMessage = error.localizedDescription }
+            uploadingAvatar = false
+        }
     }
 
     func endPair() { run { try await self.functions.endPair() } }

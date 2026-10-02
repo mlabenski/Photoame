@@ -19,11 +19,16 @@ struct IncomingSnapAlert: Identifiable, Equatable {
     let snapId: String
     let title: String
     let body: String
+    /// The sender's avatar so the in-app banner matches the push notification.
+    let senderName: String
+    let senderPhotoURL: String?
 
-    init(snapId: String, senderName: String) {
+    init(snapId: String, senderName: String, senderPhotoURL: String? = nil) {
         self.snapId = snapId
         self.title = SnapNotificationCopy.title
         self.body = SnapNotificationCopy.body(from: senderName)
+        self.senderName = senderName
+        self.senderPhotoURL = senderPhotoURL
     }
 }
 
@@ -41,11 +46,7 @@ struct SnapAlertBanner: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                Image(systemName: "photo.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .frame(width: 38, height: 38)
-                    .background(.yellow, in: Circle())
+                AvatarView(url: alert.senderPhotoURL, name: alert.senderName, size: 38)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(alert.title)

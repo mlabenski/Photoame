@@ -42,12 +42,12 @@ service cloud.firestore {
       // (needed only to show the partner's display name).
       allow read: if isSelf(uid) || sharesActivePair(uid);
 
-      // A user may create their own doc and may only ever change displayName
-      // and ageConfirmedAt. All other fields are server-owned.
+      // A user may create their own doc and may only ever change displayName,
+      // photoURL, and ageConfirmedAt. All other fields are server-owned.
       allow create: if isSelf(uid);
       allow update: if isSelf(uid)
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['displayName', 'ageConfirmedAt']);
+             .hasOnly(['displayName', 'photoURL', 'ageConfirmedAt']);
       allow delete: if false; // deleteAccount function only
 
       match /private/push {

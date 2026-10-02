@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
@@ -9,6 +10,7 @@ struct SettingsView: View {
     @State private var confirmBlock = false
     @State private var confirmDelete = false
     @State private var showReport = false
+    @State private var pickedAvatar: PhotosPickerItem?
 
     #if DEBUG
     // Pending backend choice (persisted; applies on next launch).
@@ -45,7 +47,20 @@ struct SettingsView: View {
     private func form(_ model: SettingsViewModel) -> some View {
         @Bindable var model = model
         return Form {
-            Section("Your name") {
+            Section("Your profile") {
+                HStack(spacing: 16) {
+                    ZStack {
+                        AvatarView(url: model.ownPhotoURL, name: model.displayName, size: 64)
+                        if model.uploadingAvatar {
+                            Circle().fill(.black.opacity(0.4)).frame(width: 64, height: 64)
+                            ProgressView().controlSize(.small).tint(.white)
+                        }
+                    }
+                    PhotosPicker(selection: $pickedAvatar, matching: .images) {
+                        Text(model.ownPhotoURL == nil ? "Add photo" : "Change photo")
+                    }
+                    .disabled(model.uploadingAvatar)
+                }
                 TextField("Display name", text: $model.displayName)
                     .onSubmit { model.saveDisplayName() }
                 Button("Save name") { model.saveDisplayName() }
@@ -53,7 +68,10 @@ struct SettingsView: View {
 
             if model.isPaired {
                 Section("Partner") {
-                    LabeledContent("Paired with", value: model.partnerName)
+                    HStack(spacing: 12) {
+                        AvatarView(url: model.partnerPhotoURL, name: model.partnerName, size: 40)
+                        Text(model.partnerName)
+                    }
                 }
 
                 Section("Safety") {
@@ -108,6 +126,15 @@ struct SettingsView: View {
                                   set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(model.errorMessage ?? "") }
+        .onChange(of: pickedAvatar) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    model.updateAvatar(imageData: data)
+                }
+                pickedAvatar = nil
+            }
+        }
     }
 
     #if DEBUG

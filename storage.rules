@@ -25,5 +25,17 @@ service firebase.storage {
 
       allow update, delete: if false;
     }
+
+    // Profile pictures (avatars) live at avatars/{uid}.jpg. Any signed-in user
+    // may read one (so a paired partner can display it); only the owner may
+    // write their own, capped small since avatars are downscaled client-side.
+    match /avatars/{avatarId} {
+      allow read: if isSignedIn();
+
+      allow write: if isSignedIn()
+        && avatarId == request.auth.uid + '.jpg'
+        && request.resource.size < 512 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
   }
 }

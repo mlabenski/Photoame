@@ -9,6 +9,7 @@ import os
 final class PairSessionViewModel {
     private(set) var snaps: [Snap] = []
     private(set) var partnerName = "Partner"
+    private(set) var partnerPhotoURL: String?
 
     /// The latest snap that should surface an in-app banner. Set when a new,
     /// unopened received snap arrives while the session is live; the view
@@ -86,7 +87,8 @@ final class PairSessionViewModel {
             return snap.senderUid != uid && (snap.state == .sent || snap.state == .delivered)
         }
         guard let arrival, let id = arrival.id else { return }
-        incomingAlert = IncomingSnapAlert(snapId: id, senderName: partnerName)
+        incomingAlert = IncomingSnapAlert(snapId: id, senderName: partnerName,
+                                          senderPhotoURL: partnerPhotoURL)
     }
 
     private func resolvePartnerName() {
@@ -113,8 +115,10 @@ final class PairSessionViewModel {
                         self?.log.error("partner listener error: \(error.localizedDescription, privacy: .public)")
                     }
                     let name = doc?.get("displayName") as? String
+                    let photoURL = doc?.get("photoURL") as? String
                     Task { @MainActor in
                         if let name, !name.isEmpty { self?.partnerName = name }
+                        self?.partnerPhotoURL = photoURL
                     }
                 }
         }
