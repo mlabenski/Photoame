@@ -12,6 +12,9 @@ xcuserdata/
 
 # Firebase / secrets
 GoogleService-Info.plist
+# App Store Connect API keys — never commit
+AuthKey_*.p8
+*.p8
 .firebase/
 *-debug.log
 firebase-debug.log

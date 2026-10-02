@@ -34,7 +34,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Photoame uses the camera so you can send photos to your partner. Photos are never saved to your camera roll.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Photoame connects to a local Firebase development server on your network during testing.</string>
+	<string>Photoame uses your local network to connect to nearby devices.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

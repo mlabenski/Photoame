@@ -14,6 +14,8 @@ struct ViewerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ViewerViewModel?
     @State private var capture = ScreenCaptureObserver()
+    @State private var showReport = false
+    @State private var confirmBlock = false
 
     var body: some View {
         ZStack {
@@ -28,7 +30,8 @@ struct ViewerView: View {
         .task {
             if model == nil, let uid = env.auth.uid {
                 let vm = ViewerViewModel(pairId: pairId, snapId: snapId, uid: uid,
-                                         repository: env.repository, kept: env.kept)
+                                         repository: env.repository,
+                                         functions: env.functions, kept: env.kept)
                 model = vm
                 capture.onScreenshot = { vm.reportScreenshot() }
                 capture.start()
@@ -86,6 +89,9 @@ struct ViewerView: View {
                             .background(.black.opacity(0.5), in: Circle())
                     }
                     Spacer()
+                    if model.canModerate {
+                        moderationMenu(model)
+                    }
                     Button { model.finishViewing() } label: {
                         Image(systemName: "xmark")
                             .font(.headline)
@@ -118,6 +124,55 @@ struct ViewerView: View {
             model.discard()
             onSkip()
         }
+        .confirmationDialog("Block this person?", isPresented: $confirmBlock,
+                            titleVisibility: .visible) {
+            Button("Block", role: .destructive) {
+                Task { if await model.blockSender() { dismiss() } }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This ends your pair, deletes all shared snaps, and permanently prevents pairing.")
+        }
+        .sheet(isPresented: $showReport) {
+            ReportSheet(showsBlockOption: true) { reason, detail, alsoBlock in
+                Task {
+                    let reported = await model.submitReport(reason: reason, detail: detail)
+                    var blocked = false
+                    if alsoBlock { blocked = await model.blockSender() }
+                    showReport = false
+                    if reported || blocked { dismiss() }
+                }
+            }
+        }
+        .alert("Couldn't submit",
+               isPresented: .init(get: { model.moderationError != nil },
+                                  set: { if !$0 { model.moderationError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(model.moderationError ?? "") }
+    }
+
+    private func moderationMenu(_ model: ViewerViewModel) -> some View {
+        Menu {
+            Button {
+                model.pauseCountdown()
+                showReport = true
+            } label: {
+                Label("Report…", systemImage: "flag")
+            }
+            Button(role: .destructive) {
+                model.pauseCountdown()
+                confirmBlock = true
+            } label: {
+                Label("Block…", systemImage: "hand.raised")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.headline)
+                .padding(10)
+                .background(.black.opacity(0.5), in: Circle())
+                .foregroundStyle(.white)
+        }
+        .accessibilityLabel("Report or block")
     }
 
     private func keepBar(_ model: ViewerViewModel) -> some View {

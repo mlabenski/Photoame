@@ -16,9 +16,8 @@ struct SettingsView: View {
     @State private var backendChanged = false
     #endif
 
-    // Placeholder URLs (see README).
-    private let privacyURL = URL(string: "https://photoame.example.com/privacy")!
-    private let supportURL = URL(string: "https://photoame.example.com/support")!
+    private let privacyURL = URL(string: "https://photoame.com/privacy/")!
+    private let supportURL = URL(string: "https://photoame.com/support/")!
 
     var body: some View {
         NavigationStack {
@@ -99,7 +98,7 @@ struct SettingsView: View {
             Text("This cannot be undone.")
         }
         .sheet(isPresented: $showReport) {
-            ReportSheet { reason, detail in
+            ReportSheet(subjectName: model.partnerName) { reason, detail, _ in
                 model.report(reason: reason, detail: detail)
                 showReport = false
             }
@@ -132,44 +131,4 @@ struct SettingsView: View {
         }
     }
     #endif
-}
-
-/// Collect a report reason + optional detail.
-private struct ReportSheet: View {
-    let onSubmit: (String, String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var reason = ReportReason.harassment
-    @State private var detail = ""
-
-    enum ReportReason: String, CaseIterable, Identifiable {
-        case harassment = "Harassment"
-        case nudity = "Unwanted nudity"
-        case impersonation = "Impersonation"
-        case other = "Other"
-        var id: String { rawValue }
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Picker("Reason", selection: $reason) {
-                    ForEach(ReportReason.allCases) { Text($0.rawValue).tag($0) }
-                }
-                Section("Details (optional)") {
-                    TextField("Add anything that helps", text: $detail, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-            }
-            .navigationTitle("Report")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Submit") { onSubmit(reason.rawValue, detail) }
-                }
-            }
-        }
-    }
 }

@@ -36,10 +36,12 @@ struct FunctionsClient: Sendable {
         _ = try await call("blockUser", ["otherUid": otherUid])
     }
 
-    func submitReport(reportedUid: String, pairId: String?, reason: String, detail: String) async throws {
+    func submitReport(reportedUid: String, pairId: String?, snapId: String? = nil,
+                      reason: String, detail: String) async throws {
         _ = try await call("submitReport", [
             "reportedUid": reportedUid,
             "pairId": pairId as Any,
+            "snapId": snapId as Any,
             "reason": reason,
             "detail": detail,
         ])

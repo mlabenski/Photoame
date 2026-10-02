@@ -6,8 +6,10 @@
 	<array>
 		<string>Default</string>
 	</array>
-	<!-- Use "development" locally; the App Store build flips this to "production". -->
+	<!-- Driven by the APS_ENVIRONMENT build setting: "development" for Debug,
+	     "production" for Release/App Store. Keeps local push testing on the
+	     sandbox APNs while shipping builds register with production APNs. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>$(APS_ENVIRONMENT)</string>
 </dict>
 </plist>

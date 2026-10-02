@@ -21,10 +21,14 @@ final class ViewerViewModel {
     private(set) var iKept = false
     private(set) var bothKept = false
 
+    /// Non-nil when a report/block call failed; surfaced as an alert.
+    var moderationError: String?
+
     let pairId: String
     let snapId: String
     private let uid: String
     private let repository: any SnapRepositoryProtocol
+    private let functions: FunctionsClient
     private let kept: KeptStore
 
     private var snap: Snap?
@@ -34,15 +38,22 @@ final class ViewerViewModel {
     private var countdownTask: Task<Void, Never>?
 
     init(pairId: String, snapId: String, uid: String,
-         repository: any SnapRepositoryProtocol, kept: KeptStore) {
+         repository: any SnapRepositoryProtocol, functions: FunctionsClient,
+         kept: KeptStore) {
         self.pairId = pairId
         self.snapId = snapId
         self.uid = uid
         self.repository = repository
+        self.functions = functions
         self.kept = kept
     }
 
     var isSender: Bool { snap?.senderUid == uid }
+
+    /// The recipient can report/block the sender of the snap they're viewing.
+    /// Senders can't report their own snap.
+    var canModerate: Bool { snap != nil && !isSender }
+    private var reportedUid: String? { snap?.senderUid }
 
     func begin() async {
         do {
@@ -146,6 +157,36 @@ final class ViewerViewModel {
 
     func reportScreenshot() {
         Task { try? await repository.reportScreenshot(pairId: pairId, snapId: snapId) }
+    }
+
+    /// Freeze the disappearing timer so the snap doesn't vanish out from under a
+    /// report/block flow the user is in the middle of.
+    func pauseCountdown() { countdownTask?.cancel() }
+
+    /// File a report against the snap's sender. Returns whether it succeeded.
+    func submitReport(reason: String, detail: String) async -> Bool {
+        guard let reportedUid else { return false }
+        do {
+            try await functions.submitReport(
+                reportedUid: reportedUid, pairId: pairId, snapId: snapId,
+                reason: reason, detail: detail)
+            return true
+        } catch {
+            moderationError = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Block the snap's sender (server tears down the pair). Returns success.
+    func blockSender() async -> Bool {
+        guard let reportedUid else { return false }
+        do {
+            try await functions.blockUser(otherUid: reportedUid)
+            return true
+        } catch {
+            moderationError = error.localizedDescription
+            return false
+        }
     }
 
     /// Drop the decoded image and its bytes from memory.

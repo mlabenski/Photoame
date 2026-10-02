@@ -10,6 +10,7 @@ import {
 interface ReportInput {
   reportedUid?: string;
   pairId?: string | null;
+  snapId?: string | null;
   reason?: string;
   detail?: string;
 }
@@ -28,6 +29,9 @@ export async function submitReportHandler(
     reporterUid: uid,
     reportedUid,
     pairId: req.data?.pairId ?? null,
+    // The specific snap being reported, when the report came from the viewer.
+    // Lets a moderator find the exact content before the sweep deletes it.
+    snapId: req.data?.snapId ?? null,
     reason,
     detail: req.data?.detail ?? "",
     createdAt: Timestamp.now(),
