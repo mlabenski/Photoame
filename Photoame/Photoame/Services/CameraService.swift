@@ -24,10 +24,16 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "com.photoame.camera.session")
     private let photoOutput = AVCapturePhotoOutput()
+    private let movieOutput = AVCaptureMovieFileOutput()
     private var videoInput: AVCaptureDeviceInput?
+    private var audioInput: AVCaptureDeviceInput?
     private var configured = false
     private var captureContinuation: CheckedContinuation<UIImage, Error>?
+    private var recordingURL: URL?
     private let log = Logger(subsystem: "com.photoame.app", category: "camera")
+
+    /// Delivers the finished recording (success URL or failure) on the main queue.
+    var onRecordingFinished: (@Sendable (Result<URL, Error>) -> Void)?
 
     // MARK: Zoom mapping
     //
@@ -229,19 +235,75 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
         }
     }
 
+    // MARK: Video recording
+
+    /// Begin recording to a temp `.mov`. Lazily adds the mic input on the first
+    /// recording (so photo-only users never trigger a mic prompt). The movie
+    /// output stops itself at `maxRecordedDuration`; either way completion is
+    /// reported through `onRecordingFinished`.
+    func startRecording(front: Bool) {
+        queue.async {
+            guard !self.movieOutput.isRecording else { return }
+            if self.audioInput == nil {
+                self.session.beginConfiguration()
+                self.addAudioInputIfNeeded()
+                self.session.commitConfiguration()
+            }
+            if let conn = self.movieOutput.connection(with: .video) {
+                if conn.isVideoRotationAngleSupported(90) { conn.videoRotationAngle = 90 }
+                if conn.isVideoMirroringSupported {
+                    conn.automaticallyAdjustsVideoMirroring = false
+                    conn.isVideoMirrored = front
+                }
+            }
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("rec-\(UUID().uuidString).mov")
+            self.recordingURL = url
+            self.movieOutput.startRecording(to: url, recordingDelegate: self)
+            self.log.info("video recording started")
+        }
+    }
+
+    func stopRecording() {
+        queue.async {
+            if self.movieOutput.isRecording { self.movieOutput.stopRecording() }
+        }
+    }
+
     // MARK: Queue-only configuration
 
     private func configureSession() {
         session.beginConfiguration()
-        session.sessionPreset = .photo
+        // `.high` (not `.photo`) so the same session can both take stills and
+        // record movies; `AVCaptureMovieFileOutput` is incompatible with the
+        // `.photo` preset. Stills still come through at 1080p, which is plenty
+        // once they're downscaled for sending.
+        session.sessionPreset = .high
         addVideoInput(front: true)
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
             photoOutput.maxPhotoQualityPrioritization = .balanced
         }
+        if session.canAddOutput(movieOutput) {
+            session.addOutput(movieOutput)
+            movieOutput.maxRecordedDuration = CMTime(
+                seconds: VideoProcessing.maxDuration, preferredTimescale: 600)
+        }
         session.commitConfiguration()
         configured = true
         applyDeviceDefaultsAndCapabilities(front: true)
+    }
+
+    /// Add the microphone input so recordings carry sound. Called on `queue`
+    /// inside a configuration transaction; a no-op if already present or if the
+    /// mic isn't available (the recording just stays silent).
+    private func addAudioInputIfNeeded() {
+        guard audioInput == nil,
+              let device = AVCaptureDevice.default(for: .audio),
+              let input = try? AVCaptureDeviceInput(device: device),
+              session.canAddInput(input) else { return }
+        session.addInput(input)
+        audioInput = input
     }
 
     private func addVideoInput(front: Bool) {
@@ -365,6 +427,32 @@ extension CaptureSessionController: AVCapturePhotoCaptureDelegate {
     }
 }
 
+extension CaptureSessionController: AVCaptureFileOutputRecordingDelegate {
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput,
+                                didFinishRecordingTo outputFileURL: URL,
+                                from connections: [AVCaptureConnection],
+                                error: Error?) {
+        // Hitting `maxRecordedDuration` surfaces as an error whose userInfo flags
+        // the recording as successfully finished — treat that as success.
+        let succeeded: Bool
+        if let error {
+            succeeded = (error as NSError)
+                .userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool ?? false
+        } else {
+            succeeded = true
+        }
+        let result: Result<URL, Error> = succeeded
+            ? .success(outputFileURL)
+            : .failure(error ?? CameraError.recordingFailed)
+        queue.async {
+            self.recordingURL = nil
+            if let cb = self.onRecordingFinished {
+                DispatchQueue.main.async { cb(result) }
+            }
+        }
+    }
+}
+
 /// Observable, main-actor camera facade for SwiftUI. Delegates all session work
 /// to `CaptureSessionController` and pauses when off screen / backgrounded.
 @MainActor
@@ -378,6 +466,15 @@ final class CameraService {
     /// User-controlled flash. Governs the back camera's hardware flash and the
     /// front camera's screen-flash overlay. Off by default.
     var flashEnabled = false
+
+    /// True while a video is recording. Drives the shutter's recording UI.
+    private(set) var isRecording = false
+    /// Recording progress, 0...1 across the 10-second maximum. Drives the ring.
+    private(set) var recordingProgress: CGFloat = 0
+    /// Set by the view model; delivers the finished recording's file URL (or an
+    /// error). Fires whether the user lifted off or the 10-second cap was hit.
+    var onRecordingFinished: ((Result<URL, Error>) -> Void)?
+    private var progressTask: Task<Void, Never>?
 
     // Zoom state, in display terms (main wide == 1.0×), kept in sync with the
     // active lens set via the controller's callbacks.
@@ -403,6 +500,9 @@ final class CameraService {
                 self?.zoomFactor = caps.current
             }
         }
+        controller.onRecordingFinished = { [weak self] result in
+            Task { @MainActor in self?.finishRecording(result) }
+        }
         // Warm the session up front for already-authorized users so the first
         // frame appears as soon as the view is on screen.
         if AVCaptureDevice.authorizationStatus(for: .video) == .authorized {
@@ -412,6 +512,7 @@ final class CameraService {
 
     func onAppear() { Task { await requestAccessAndStart() } }
     func onDisappear() {
+        if isRecording { controller.stopRecording() }
         controller.stop { _ in }
         isRunning = false
     }
@@ -458,13 +559,58 @@ final class CameraService {
         defer { showScreenFlash = false }
         return try await controller.capturePhoto(front: isFrontCamera, flashOn: flashEnabled)
     }
+
+    // MARK: Recording
+
+    /// Begin recording. Requests mic access on first use (recording proceeds
+    /// silently if denied). The clip stops itself at the 10-second cap; either
+    /// way the result is delivered via `onRecordingFinished`.
+    func startRecording() async {
+        guard !isRecording else { return }
+        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            _ = await AVCaptureDevice.requestAccess(for: .audio)
+        }
+        guard !isRecording else { return }
+        isRecording = true
+        recordingProgress = 0
+        controller.startRecording(front: isFrontCamera)
+        startProgressTimer()
+    }
+
+    func stopRecording() {
+        guard isRecording else { return }
+        controller.stopRecording()
+    }
+
+    private func finishRecording(_ result: Result<URL, Error>) {
+        progressTask?.cancel()
+        progressTask = nil
+        isRecording = false
+        recordingProgress = 0
+        onRecordingFinished?(result)
+    }
+
+    private func startProgressTimer() {
+        progressTask?.cancel()
+        let start = Date()
+        progressTask = Task { @MainActor [weak self] in
+            while let self, self.isRecording {
+                let elapsed = Date().timeIntervalSince(start)
+                self.recordingProgress = min(CGFloat(elapsed / VideoProcessing.maxDuration), 1)
+                if elapsed >= VideoProcessing.maxDuration { break }
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+    }
 }
 
 enum CameraError: LocalizedError {
     case captureFailed
+    case recordingFailed
     var errorDescription: String? {
         switch self {
         case .captureFailed: return "Could not capture the photo."
+        case .recordingFailed: return "Could not record the video."
         }
     }
 }

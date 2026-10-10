@@ -189,10 +189,13 @@ export const onSnapCreated = onDocumentCreated(
       (senderDoc.get("displayName") as string) ?? "your partner";
     const senderPhotoURL = senderDoc.get("photoURL") as string | undefined;
 
+    const isVideo = snap.get("mediaType") === "video";
+    const noun = isVideo ? "video" : "snap";
+
     await sendPushToUser(
       recipient,
-      "New snap",
-      `New snap from ${senderName}`,
+      isVideo ? "New video" : "New snap",
+      `New ${noun} from ${senderName}`,
       { type: "snap", pairId, snapId },
       senderPhotoURL
     );

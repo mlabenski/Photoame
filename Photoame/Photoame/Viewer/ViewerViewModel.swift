@@ -16,6 +16,10 @@ final class ViewerViewModel {
 
     private(set) var phase: Phase = .loading
     private(set) var image: UIImage?
+    /// Local temp file URL for a video snap (nil for photos). Playable while the
+    /// snap is on screen; removed on `discard`.
+    private(set) var videoURL: URL?
+    private(set) var isVideo = false
     private(set) var caption = ""
     private(set) var countdown: Int?         // nil == "until dismissed"
     private(set) var iKept = false
@@ -32,7 +36,9 @@ final class ViewerViewModel {
     private let kept: KeptStore
 
     private var snap: Snap?
-    private var imageData: Data?
+    /// The downloaded blob, kept in memory so Keep can persist it without a
+    /// second download (image bytes for photos, the full file for videos).
+    private var mediaData: Data?
     private var timerSeconds = 0
     private var hasReplayed = false
     private var countdownTask: Task<Void, Never>?
@@ -70,9 +76,17 @@ final class ViewerViewModel {
                 _ = try await repository.markOpened(pairId: pairId, snapId: snapId)
             }
 
-            let data = try await repository.downloadImage(path: snap.storagePath)
-            self.imageData = data
-            self.image = UIImage(data: data)
+            self.isVideo = snap.isVideo
+            if snap.isVideo {
+                let data = try await repository.downloadData(
+                    path: snap.storagePath, maxBytes: 80 * 1024 * 1024)
+                self.mediaData = data
+                self.videoURL = try Self.writeTempVideo(data)
+            } else {
+                let data = try await repository.downloadImage(path: snap.storagePath)
+                self.mediaData = data
+                self.image = UIImage(data: data)
+            }
             phase = .viewing
             startCountdown()
         } catch {
@@ -114,7 +128,9 @@ final class ViewerViewModel {
         countdownTask?.cancel()
         // A recipient gets exactly one replay inside the 5-minute window.
         if !isSender, !hasReplayed, (snap?.replayAvailable ?? false) {
-            image = nil // discard current frame from memory until replay
+            // Stop showing the media until replay (keep bytes for the rewatch).
+            image = nil
+            removeTempVideo()
             phase = .replayAvailable
         } else {
             discard()
@@ -128,7 +144,10 @@ final class ViewerViewModel {
         Task {
             do {
                 try await repository.markReplayed(pairId: pairId, snapId: snapId)
-                if let data = imageData { image = UIImage(data: data) }
+                if let data = mediaData {
+                    if isVideo { videoURL = try Self.writeTempVideo(data) }
+                    else { image = UIImage(data: data) }
+                }
                 phase = .viewing
                 startCountdown()
             } catch {
@@ -143,8 +162,9 @@ final class ViewerViewModel {
                 iKept = true
                 let both = try await repository.keepSnap(pairId: pairId, snapId: snapId)
                 bothKept = both
-                if both, let data = imageData {
-                    kept.save(snapId: snapId, imageData: data,
+                if both, let data = mediaData {
+                    kept.save(snapId: snapId, data: data,
+                              mediaType: isVideo ? .video : .image,
                               caption: caption, keptAt: Date())
                     phase = .keptConfirmed
                 }
@@ -189,10 +209,24 @@ final class ViewerViewModel {
         }
     }
 
-    /// Drop the decoded image and its bytes from memory.
+    /// Drop the decoded media and its bytes from memory (and the temp video file).
     func discard() {
         countdownTask?.cancel()
         image = nil
-        imageData = nil
+        mediaData = nil
+        removeTempVideo()
+    }
+
+    /// Write downloaded video bytes to a temp `.mp4` for playback.
+    private static func writeTempVideo(_ data: Data) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("view-\(UUID().uuidString).mp4")
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
+    private func removeTempVideo() {
+        if let url = videoURL { try? FileManager.default.removeItem(at: url) }
+        videoURL = nil
     }
 }

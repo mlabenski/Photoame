@@ -37,6 +37,8 @@ struct CameraView: View {
                 liveCamera
             case .review(let image):
                 reviewPane(image)
+            case .reviewVideo(let url):
+                videoReviewPane(url)
             }
         }
         .onAppear { model.onAppear() }
@@ -75,9 +77,14 @@ struct CameraView: View {
                 VStack {
                     Spacer()
                     VStack(spacing: 18) {
-                        controlRow
-                        if model.camera.zoomPresets.count > 1 { zoomControl }
+                        // Hide the framing controls while recording so a stray tap
+                        // can't flip the camera or toggle flash mid-clip.
+                        if !model.camera.isRecording {
+                            controlRow
+                            if model.camera.zoomPresets.count > 1 { zoomControl }
+                        }
                         shutterButton
+                        shutterHint
                     }
                     .padding(.bottom, 40)
                 }
@@ -302,18 +309,66 @@ struct CameraView: View {
         }
     }
 
+    /// Tap to take a photo; press and hold to record a video (up to 10s). While
+    /// recording, a red progress ring fills around the shutter and the inner knob
+    /// becomes a red square.
     private var shutterButton: some View {
-        Button {
-            Haptics.medium()
-            model.capture(previewAspect: previewHandle.aspectRatio)
-        } label: {
-            ZStack {
+        let recording = model.camera.isRecording
+        return ZStack {
+            if recording {
+                Circle().stroke(.white.opacity(0.3), lineWidth: 5)
+                    .frame(width: 82, height: 82)
+                Circle()
+                    .trim(from: 0, to: model.camera.recordingProgress)
+                    .stroke(.red, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 82, height: 82)
+                RoundedRectangle(cornerRadius: 8).fill(.red)
+                    .frame(width: 32, height: 32)
+            } else {
                 Circle().stroke(.white, lineWidth: 5).frame(width: 82, height: 82)
                 Circle().fill(.white).frame(width: 68, height: 68)
             }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Take photo")
+        .animation(.easeInOut(duration: 0.2), value: recording)
+        .contentShape(Circle())
+        .gesture(recordGesture)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                guard model.isLive, !model.camera.isRecording else { return }
+                Haptics.medium()
+                model.capture(previewAspect: previewHandle.aspectRatio)
+            }
+        )
+        .accessibilityLabel("Shutter")
+        .accessibilityHint("Tap to take a photo. Press and hold to record a video.")
+    }
+
+    /// Long-press (held ≥0.3s) starts recording; lifting off stops it. A plain
+    /// quick tap falls through to the simultaneous `TapGesture` (a photo).
+    private var recordGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                if case .second(true, _) = value, !model.camera.isRecording {
+                    Haptics.medium()
+                    model.startRecording()
+                }
+            }
+            .onEnded { _ in
+                if model.camera.isRecording { model.stopRecording() }
+            }
+    }
+
+    @ViewBuilder
+    private var shutterHint: some View {
+        if model.camera.isRecording {
+            Text("Recording… release to stop")
+                .font(.caption).foregroundStyle(.white.opacity(0.85))
+        } else {
+            Text("Tap for photo · hold for video")
+                .font(.caption).foregroundStyle(.white.opacity(0.7))
+        }
     }
 
     private var permissionDenied: some View {
@@ -362,11 +417,38 @@ struct CameraView: View {
             }
             .ignoresSafeArea()
 
-            reviewControls
+            sendControls(showDragHint: true)
         }
     }
 
-    private var reviewControls: some View {
+    // MARK: Video review
+
+    /// Review a just-recorded clip: it loops full-bleed behind the same caption /
+    /// timer / send controls used for photos. The caption isn't burned into the
+    /// video (it's shown as an overlay to the recipient), so there's no drag hint.
+    private func videoReviewPane(_ url: URL) -> some View {
+        ZStack(alignment: .bottom) {
+            LoopingPlayerView(url: url, fill: true)
+                .ignoresSafeArea()
+
+            if !model.caption.isEmpty {
+                Text(model.caption)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(10)
+                    .background(.black.opacity(0.4),
+                                in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .allowsHitTesting(false)
+            }
+
+            sendControls(showDragHint: false)
+        }
+    }
+
+    private func sendControls(showDragHint: Bool) -> some View {
         VStack(spacing: 16) {
             TextField("Add a caption", text: Binding(
                 get: { model.caption },
@@ -374,7 +456,7 @@ struct CameraView: View {
                 .textFieldStyle(.roundedBorder)
                 .accessibilityLabel("Caption, up to 80 characters")
 
-            if !model.caption.isEmpty {
+            if showDragHint, !model.caption.isEmpty {
                 Text("Drag the caption to move it · pinch to resize")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.8))
