@@ -77,7 +77,11 @@ service cloud.firestore {
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.state == 'sent'
           && request.resource.data.timerSeconds in [0, 3, 5, 10]
-          && request.resource.data.mediaType in ['image', 'video']
+          // mediaType is optional so clients predating videos (which omit it, and
+          // only ever send photos) can still create snaps; when present it must be
+          // a known kind.
+          && (!('mediaType' in request.resource.data)
+              || request.resource.data.mediaType in ['image', 'video'])
           && request.resource.data.keys().hasOnly([
                'senderUid', 'storagePath', 'caption', 'timerSeconds',
                'mediaType', 'state', 'createdAt'
