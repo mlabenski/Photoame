@@ -24,6 +24,22 @@ enum ImageProcessing {
         return encode(captioned)
     }
 
+    /// Prepare a profile picture: center-crop to a square, downscale to 256px,
+    /// and encode as JPEG. Avatars are small and widely cached (banners, headers),
+    /// so we favor broad compatibility (JPEG) over HEIC and a tight byte budget.
+    static func prepareAvatar(_ image: UIImage) -> Data? {
+        let square = cropCentered(image, toAspect: 1)
+        let sized = downscale(square, longEdge: 256)
+        // Walk quality down to stay comfortably under the 512 KB Storage cap.
+        for quality in stride(from: 0.8, through: 0.4, by: -0.1) {
+            if let data = sized.jpegData(compressionQuality: quality),
+               data.count <= 480 * 1024 {
+                return data
+            }
+        }
+        return sized.jpegData(compressionQuality: 0.4)
+    }
+
     /// Center-crop `image` so its aspect ratio matches `aspect` (width / height in
     /// the image's displayed orientation). Used to make a capture match what the
     /// `.resizeAspectFill` preview showed: the preview covers the tall screen by

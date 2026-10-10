@@ -35,6 +35,9 @@ export async function deleteAccountHandler(
     ownedSnaps.docs.map((d) => deleteBlobIfExists(d.get("storagePath") as string))
   );
 
+  // Remove the user's profile picture blob, if any.
+  await deleteBlobIfExists(`avatars/${uid}.jpg`);
+
   const batch = db.batch();
   ownedSnaps.docs.forEach((d) => batch.delete(d.ref));
 

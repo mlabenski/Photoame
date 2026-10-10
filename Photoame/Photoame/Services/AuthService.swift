@@ -3,6 +3,7 @@ import AuthenticationServices
 import CryptoKit
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage
 import os
 
 /// Owns Sign in with Apple and the signed-in user's profile document.
@@ -197,6 +198,19 @@ final class AuthService: NSObject {
         guard let uid else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         try await db.document("users/\(uid)").setData(["displayName": trimmed], merge: true)
+    }
+
+    /// Upload a profile picture and mirror its download URL onto the user doc.
+    /// The blob is written to `avatars/{uid}.jpg` (overwriting any prior one);
+    /// each upload mints a fresh download token, so we always re-read the URL.
+    func updateAvatar(imageData: Data) async throws {
+        guard let uid else { return }
+        let ref = Storage.storage().reference(withPath: "avatars/\(uid).jpg")
+        let meta = StorageMetadata()
+        meta.contentType = "image/jpeg"
+        _ = try await ref.putDataAsync(imageData, metadata: meta)
+        let url = try await ref.downloadURL()
+        try await db.document("users/\(uid)").setData(["photoURL": url.absoluteString], merge: true)
     }
 
     func signOut() throws {

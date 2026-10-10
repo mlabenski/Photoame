@@ -130,10 +130,15 @@ struct PairedHomeView: View {
 
             Spacer()
 
-            Text(session.partnerName)
-                .font(.headline)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(.black.opacity(0.4), in: Capsule())
+            HStack(spacing: 8) {
+                AvatarView(url: session.partnerPhotoURL, name: session.partnerName, size: 28)
+                Text(session.partnerName)
+                    .font(.headline)
+            }
+            .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 6)
+            .background(.black.opacity(0.4), in: Capsule())
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Paired with \(session.partnerName)")
 
             Spacer()
 
