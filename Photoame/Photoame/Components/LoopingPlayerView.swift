@@ -37,12 +37,24 @@ final class LoopingPlayerUIView: UIView {
     func configure(url: URL, fill: Bool) {
         try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
+        playerLayer.videoGravity = fill ? .resizeAspectFill : .resizeAspect
 
-        let item = AVPlayerItem(url: url)
+        // Build an upright-portrait composition before starting playback, so the
+        // clip never shows sideways even if its recorded orientation is landscape.
+        // A portrait clip is left untouched by the composition.
+        Task { [weak self] in
+            let asset = AVURLAsset(url: url)
+            let composition = await VideoProcessing.portraitComposition(for: asset)
+            await MainActor.run { self?.startPlayback(asset: asset, composition: composition) }
+        }
+    }
+
+    private func startPlayback(asset: AVURLAsset, composition: AVVideoComposition?) {
+        let item = AVPlayerItem(asset: asset)
+        item.videoComposition = composition
         let player = AVQueuePlayer()
         looper = AVPlayerLooper(player: player, templateItem: item)
         playerLayer.player = player
-        playerLayer.videoGravity = fill ? .resizeAspectFill : .resizeAspect
         queuePlayer = player
         player.play()
     }

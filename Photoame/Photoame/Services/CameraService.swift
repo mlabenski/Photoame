@@ -59,11 +59,11 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
         super.init()
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(sessionRuntimeError(_:)),
-                           name: .AVCaptureSessionRuntimeError, object: session)
+                           name: AVCaptureSession.runtimeErrorNotification, object: session)
         center.addObserver(self, selector: #selector(sessionWasInterrupted(_:)),
-                           name: .AVCaptureSessionWasInterrupted, object: session)
+                           name: AVCaptureSession.wasInterruptedNotification, object: session)
         center.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)),
-                           name: .AVCaptureSessionInterruptionEnded, object: session)
+                           name: AVCaptureSession.interruptionEndedNotification, object: session)
     }
 
     /// Configure the session ahead of the first `start` so the first frame lands

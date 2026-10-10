@@ -24,7 +24,7 @@ final class KeptStore {
     /// `{snapId}.img` so the gallery grid has a thumbnail; photos store their
     /// bytes directly as `{snapId}.img`.
     func save(snapId: String, data: Data, mediaType: SnapMediaType,
-              caption: String, keptAt: Date) {
+              caption: String, keptAt: Date) async {
         let imgURL = directory.appendingPathComponent("\(snapId).img")
         guard !FileManager.default.fileExists(atPath: imgURL.path) else { return }
 
@@ -36,7 +36,7 @@ final class KeptStore {
             let videoURL = directory.appendingPathComponent("\(snapId).mp4")
             try? data.write(to: videoURL, options: .atomic)
             excludeFromBackup(videoURL)
-            if let poster = VideoProcessing.posterFrame(from: videoURL),
+            if let poster = await VideoProcessing.posterFrame(from: videoURL),
                let posterData = poster.jpegData(compressionQuality: 0.8) {
                 try? posterData.write(to: imgURL, options: .atomic)
                 excludeFromBackup(imgURL)

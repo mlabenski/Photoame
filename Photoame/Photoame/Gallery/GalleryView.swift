@@ -108,10 +108,10 @@ struct GalleryView: View {
             let maxBytes = snap.isVideo ? 80 * 1024 * 1024 : 5 * 1024 * 1024
             if let data = try? await env.repository.downloadData(
                 path: snap.storagePath, maxBytes: maxBytes) {
-                env.kept.save(snapId: id, data: data,
-                              mediaType: snap.isVideo ? .video : .image,
-                              caption: snap.caption,
-                              keptAt: snap.createdAt ?? Date())
+                await env.kept.save(snapId: id, data: data,
+                                    mediaType: snap.isVideo ? .video : .image,
+                                    caption: snap.caption,
+                                    keptAt: snap.createdAt ?? Date())
             }
         }
     }

@@ -25,41 +25,56 @@ enum VideoProcessing {
             log.error("could not create export session for video")
             return nil
         }
-        // Bake the source's orientation into the output frames. A plain export is
-        // notorious for dropping a portrait clip's preferred transform and landing
-        // it sideways (landscape); an explicit, orientation-aware composition keeps
-        // the sent MP4 upright exactly as it was recorded.
-        if let composition = await orientedComposition(for: asset) {
+        // Bake an upright-portrait orientation into the output frames. See
+        // `portraitComposition` — this is what keeps the sent MP4 from landing
+        // sideways when the capture connection failed to rotate the clip.
+        if let composition = await portraitComposition(for: asset) {
             session.videoComposition = composition
         }
         let outURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("snap-\(UUID().uuidString).mp4")
-        session.outputURL = outURL
-        session.outputFileType = .mp4
         session.shouldOptimizeForNetworkUse = true
 
-        await session.export()
-        guard session.status == .completed else {
-            log.error("video export failed: \(session.error?.localizedDescription ?? "unknown", privacy: .public)")
+        do {
+            try await session.export(to: outURL, as: .mp4)
+        } catch {
+            log.error("video export failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
         return outURL
     }
 
-    /// Build a video composition that applies the source track's preferred
-    /// transform, with a render size matching the *oriented* frame — the canonical
-    /// recipe for exporting an upright clip. Returns `nil` if the track or its
-    /// attributes can't be read (the caller then exports without a composition).
-    private static func orientedComposition(for asset: AVAsset) async -> AVMutableVideoComposition? {
+    /// Build a video composition that renders the clip **upright in portrait**.
+    ///
+    /// The app only ever shoots portrait, yet some devices don't honor the movie
+    /// output connection's rotation, leaving the recorded file in the sensor's
+    /// native landscape. This composition starts from the source's own preferred
+    /// transform; if the resulting frame is still landscape it adds a 90°
+    /// clockwise rotation so the output is portrait. A clip that's already
+    /// portrait is left untouched, so this never double-rotates a correct clip —
+    /// which makes it safe to apply to both review playback and the sent copy.
+    ///
+    /// Returns `nil` if the track or its attributes can't be read (callers then
+    /// fall back to playing/exporting the file as-is).
+    static func portraitComposition(for asset: AVAsset) async -> AVMutableVideoComposition? {
         guard let track = try? await asset.loadTracks(withMediaType: .video).first,
               let naturalSize = try? await track.load(.naturalSize),
-              let transform = try? await track.load(.preferredTransform),
+              let preferred = try? await track.load(.preferredTransform),
               let duration = try? await asset.load(.duration) else {
             return nil
         }
-        // Extents of the frame after the transform rotates/flips it.
-        let oriented = naturalSize.applying(transform)
-        let renderSize = CGSize(width: abs(oriented.width), height: abs(oriented.height))
+        // Frame extents after the source's own transform.
+        let displayed = naturalSize.applying(preferred)
+        let dW = abs(displayed.width), dH = abs(displayed.height)
+
+        var transform = preferred
+        var renderSize = CGSize(width: dW, height: dH)
+        if dW > dH {
+            // Landscape → rotate an extra 90° clockwise into a portrait frame.
+            let cw90 = CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: dH, ty: 0)
+            transform = preferred.concatenating(cw90)
+            renderSize = CGSize(width: dH, height: dW)
+        }
 
         let composition = AVMutableVideoComposition()
         composition.renderSize = renderSize
@@ -76,14 +91,14 @@ enum VideoProcessing {
 
     /// Extract a poster frame (the first frame) from a video for use as a
     /// thumbnail in the Kept gallery. Returns `nil` if the frame can't be read.
-    static func posterFrame(from url: URL) -> UIImage? {
+    static func posterFrame(from url: URL) async -> UIImage? {
         let asset = AVURLAsset(url: url)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
-        guard let cg = try? generator.copyCGImage(
-            at: CMTime(seconds: 0, preferredTimescale: 600), actualTime: nil) else {
+        guard let result = try? await generator.image(
+            at: CMTime(seconds: 0, preferredTimescale: 600)) else {
             return nil
         }
-        return UIImage(cgImage: cg)
+        return UIImage(cgImage: result.image)
     }
 }

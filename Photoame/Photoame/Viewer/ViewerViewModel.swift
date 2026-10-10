@@ -163,9 +163,9 @@ final class ViewerViewModel {
                 let both = try await repository.keepSnap(pairId: pairId, snapId: snapId)
                 bothKept = both
                 if both, let data = mediaData {
-                    kept.save(snapId: snapId, data: data,
-                              mediaType: isVideo ? .video : .image,
-                              caption: caption, keptAt: Date())
+                    await kept.save(snapId: snapId, data: data,
+                                    mediaType: isVideo ? .video : .image,
+                                    caption: caption, keptAt: Date())
                     phase = .keptConfirmed
                 }
             } catch {
