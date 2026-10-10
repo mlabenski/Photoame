@@ -354,6 +354,14 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
     private func applyDeviceDefaultsAndCapabilities(front: Bool) {
         guard let device = videoInput?.device else { return }
 
+        // The app is portrait-locked, so pin the movie output to portrait (90°)
+        // here — once the connection is fully formed after commit — as well as at
+        // record time, so a recorded clip is never saved sideways.
+        if let conn = movieOutput.connection(with: .video),
+           conn.isVideoRotationAngleSupported(90) {
+            conn.videoRotationAngle = 90
+        }
+
         let switchovers = device.virtualDeviceSwitchOverVideoZoomFactors.map { CGFloat(truncating: $0) }
         let hasUltraWide = !switchovers.isEmpty && device.minAvailableVideoZoomFactor < switchovers[0]
         referenceFactor = hasUltraWide ? switchovers[0] : 1.0

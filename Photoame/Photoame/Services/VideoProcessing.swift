@@ -25,6 +25,13 @@ enum VideoProcessing {
             log.error("could not create export session for video")
             return nil
         }
+        // Bake the source's orientation into the output frames. A plain export is
+        // notorious for dropping a portrait clip's preferred transform and landing
+        // it sideways (landscape); an explicit, orientation-aware composition keeps
+        // the sent MP4 upright exactly as it was recorded.
+        if let composition = await orientedComposition(for: asset) {
+            session.videoComposition = composition
+        }
         let outURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("snap-\(UUID().uuidString).mp4")
         session.outputURL = outURL
@@ -37,6 +44,34 @@ enum VideoProcessing {
             return nil
         }
         return outURL
+    }
+
+    /// Build a video composition that applies the source track's preferred
+    /// transform, with a render size matching the *oriented* frame — the canonical
+    /// recipe for exporting an upright clip. Returns `nil` if the track or its
+    /// attributes can't be read (the caller then exports without a composition).
+    private static func orientedComposition(for asset: AVAsset) async -> AVMutableVideoComposition? {
+        guard let track = try? await asset.loadTracks(withMediaType: .video).first,
+              let naturalSize = try? await track.load(.naturalSize),
+              let transform = try? await track.load(.preferredTransform),
+              let duration = try? await asset.load(.duration) else {
+            return nil
+        }
+        // Extents of the frame after the transform rotates/flips it.
+        let oriented = naturalSize.applying(transform)
+        let renderSize = CGSize(width: abs(oriented.width), height: abs(oriented.height))
+
+        let composition = AVMutableVideoComposition()
+        composition.renderSize = renderSize
+        composition.frameDuration = CMTime(value: 1, timescale: 30)
+
+        let instruction = AVMutableVideoCompositionInstruction()
+        instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
+        let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
+        layer.setTransform(transform, at: .zero)
+        instruction.layerInstructions = [layer]
+        composition.instructions = [instruction]
+        return composition
     }
 
     /// Extract a poster frame (the first frame) from a video for use as a
