@@ -77,9 +77,14 @@ service cloud.firestore {
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.state == 'sent'
           && request.resource.data.timerSeconds in [0, 3, 5, 10]
+          // mediaType is optional so clients predating videos (which omit it, and
+          // only ever send photos) can still create snaps; when present it must be
+          // a known kind.
+          && (!('mediaType' in request.resource.data)
+              || request.resource.data.mediaType in ['image', 'video'])
           && request.resource.data.keys().hasOnly([
                'senderUid', 'storagePath', 'caption', 'timerSeconds',
-               'state', 'createdAt'
+               'mediaType', 'state', 'createdAt'
              ]);
 
         // All transitions (open/replay/keep/screenshot/expire) run server-side.

@@ -29,7 +29,7 @@ struct PairedHomeView: View {
     private func content(camera: CameraViewModel, session: PairSessionViewModel) -> some View {
         // The inbox affordance only belongs on the live camera — during capture
         // review the same space holds the caption editor and send controls.
-        let isLive: Bool = { if case .live = camera.phase { return true }; return false }()
+        let isLive = camera.isLive
 
         return ZStack(alignment: .top) {
             CameraView(model: camera)
@@ -107,7 +107,7 @@ struct PairedHomeView: View {
     private func topBar(camera: CameraViewModel, session: PairSessionViewModel) -> some View {
         // While reviewing a captured photo the leading control becomes a retake
         // (X) button; on the live camera it's the Settings gear.
-        let isReviewing: Bool = { if case .review = camera.phase { return true }; return false }()
+        let isReviewing = camera.isReviewing
 
         return HStack {
             if isReviewing {

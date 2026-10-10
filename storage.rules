@@ -1,8 +1,9 @@
 rules_version = '2';
 
 // Photoame Cloud Storage rules.
-// Snap blobs live at snaps/{pairId}/{snapId}.jpg. Only the sender may write,
-// only pair members may read. Deletion is server-side (sweepExpired / endPair).
+// Snap blobs live at snaps/{pairId}/{snapId}.{jpg,heic,mp4}. Only the sender may
+// write, only pair members may read. Photos are capped at 5 MB; videos (max 10 s,
+// transcoded client-side) at 60 MB. Deletion is server-side (sweepExpired / endPair).
 
 service firebase.storage {
   match /b/{bucket}/o {
@@ -20,8 +21,12 @@ service firebase.storage {
 
       allow create: if isSignedIn()
         && request.auth.uid in pairMembers(pairId)
-        && request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && (
+          (request.resource.contentType.matches('image/.*')
+            && request.resource.size < 5 * 1024 * 1024)
+          || (request.resource.contentType.matches('video/.*')
+            && request.resource.size < 60 * 1024 * 1024)
+        );
 
       allow update, delete: if false;
     }

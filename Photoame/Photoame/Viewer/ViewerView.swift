@@ -69,7 +69,14 @@ struct ViewerView: View {
 
     private func imageStage(_ model: ViewerViewModel) -> some View {
         ZStack {
-            if let image = model.image {
+            if let url = model.videoURL {
+                LoopingPlayerView(url: url, fill: false)
+                    .blur(radius: capture.isCaptured ? 40 : 0)
+                    .overlay {
+                        if capture.isCaptured { capturedOverlay }
+                    }
+                    .accessibilityLabel(model.caption.isEmpty ? "Snap video" : model.caption)
+            } else if let image = model.image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()

@@ -43,6 +43,13 @@ enum SnapState: String, Codable, Sendable {
     case kept
 }
 
+/// What kind of media a snap carries. Absent on older snaps, which are always
+/// photos, so decoding falls back to `.image`.
+enum SnapMediaType: String, Codable, Sendable {
+    case image
+    case video
+}
+
 /// A snap (`pairs/{pairId}/snaps/{snapId}`). The client only ever creates one
 /// (with `state == .sent`); every transition afterwards is server-side.
 struct Snap: Codable, Identifiable {
@@ -52,12 +59,16 @@ struct Snap: Codable, Identifiable {
     var caption: String
     var timerSeconds: Int
     var state: SnapState
+    /// `nil` for snaps written before videos existed; treat those as photos.
+    var mediaType: SnapMediaType?
     var createdAt: Date?
     var openedAt: Date?
     var replayedAt: Date?
     var keptBy: [String]?
     var screenshotAt: Date?
     var expiresAt: Date?
+
+    var isVideo: Bool { mediaType == .video }
 
     var wasScreenshotted: Bool { screenshotAt != nil }
     func keptByMe(_ uid: String) -> Bool { keptBy?.contains(uid) ?? false }

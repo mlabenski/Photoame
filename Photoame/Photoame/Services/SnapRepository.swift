@@ -13,7 +13,13 @@ protocol SnapRepositoryProtocol: Sendable {
     func streamSnaps(pairId: String) -> AsyncStream<[Snap]>
     func sendSnap(pairId: String, senderUid: String, imageData: Data,
                   isHEIC: Bool, caption: String, timerSeconds: Int) async throws
+    /// Send a video snap. `fileURL` points at an already-transcoded `.mp4` in the
+    /// app sandbox; its bytes are uploaded and the file is the caller's to clean up.
+    func sendVideoSnap(pairId: String, senderUid: String, fileURL: URL,
+                       caption: String, timerSeconds: Int) async throws
     func downloadImage(path: String) async throws -> Data
+    /// Download an arbitrary snap blob (used for video, which exceeds the image cap).
+    func downloadData(path: String, maxBytes: Int) async throws -> Data
     func markOpened(pairId: String, snapId: String) async throws -> Date?
     func markReplayed(pairId: String, snapId: String) async throws
     /// Returns true once both members have kept the snap.
@@ -50,21 +56,39 @@ actor SnapRepository: SnapRepositoryProtocol {
 
     func sendSnap(pairId: String, senderUid: String, imageData: Data,
                   isHEIC: Bool, caption: String, timerSeconds: Int) async throws {
-        // 1. Reserve a snap id so the storage path and doc id line up.
+        try await createSnap(
+            pairId: pairId, senderUid: senderUid, data: imageData,
+            contentType: isHEIC ? "image/heic" : "image/jpeg",
+            fileExtension: isHEIC ? "heic" : "jpg", mediaType: .image,
+            caption: caption, timerSeconds: timerSeconds)
+    }
+
+    func sendVideoSnap(pairId: String, senderUid: String, fileURL: URL,
+                       caption: String, timerSeconds: Int) async throws {
+        let data = try Data(contentsOf: fileURL)
+        try await createSnap(
+            pairId: pairId, senderUid: senderUid, data: data,
+            contentType: "video/mp4", fileExtension: "mp4", mediaType: .video,
+            caption: caption, timerSeconds: timerSeconds)
+    }
+
+    /// Upload the blob, then create the snap doc (state "sent"); the Firestore
+    /// trigger takes it from there. The blob is written first because the Storage
+    /// create rule needs it to exist, and the doc reserves the id so the storage
+    /// path and doc id line up.
+    private func createSnap(pairId: String, senderUid: String, data: Data,
+                            contentType: String, fileExtension: String,
+                            mediaType: SnapMediaType, caption: String,
+                            timerSeconds: Int) async throws {
         let snapRef = db.collection("pairs/\(pairId)/snaps").document()
-        let ext = isHEIC ? "heic" : "jpg"
-        let path = "snaps/\(pairId)/\(snapRef.documentID).\(ext)"
-
-        // 2. Upload the blob first — rules require it to exist before the doc read.
-        try await uploadWithAuthRetry(imageData, to: path,
-                                      contentType: isHEIC ? "image/heic" : "image/jpeg")
-
-        // 3. Create the snap doc (state "sent"); the trigger takes it from here.
+        let path = "snaps/\(pairId)/\(snapRef.documentID).\(fileExtension)"
+        try await uploadWithAuthRetry(data, to: path, contentType: contentType)
         try await snapRef.setData([
             "senderUid": senderUid,
             "storagePath": path,
             "caption": String(caption.prefix(80)),
             "timerSeconds": timerSeconds,
+            "mediaType": mediaType.rawValue,
             "state": SnapState.sent.rawValue,
             "createdAt": FieldValue.serverTimestamp(),
         ])
@@ -100,7 +124,11 @@ actor SnapRepository: SnapRepositoryProtocol {
     }
 
     func downloadImage(path: String) async throws -> Data {
-        try await storage.reference(withPath: path).data(maxSize: 5 * 1024 * 1024)
+        try await downloadData(path: path, maxBytes: 5 * 1024 * 1024)
+    }
+
+    func downloadData(path: String, maxBytes: Int) async throws -> Data {
+        try await storage.reference(withPath: path).data(maxSize: Int64(maxBytes))
     }
 
     func markOpened(pairId: String, snapId: String) async throws -> Date? {
