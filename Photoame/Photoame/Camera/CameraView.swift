@@ -11,6 +11,23 @@ struct CameraView: View {
     /// deltas apply relative to where the caption was, not from zero.
     @State private var captionDragBase: CGPoint?
     @State private var captionScaleBase: CGFloat?
+    /// Display-zoom captured when a pinch begins, so the pinch scales relative to
+    /// the current zoom instead of snapping back to 1× each gesture.
+    @State private var zoomBase: CGFloat?
+    /// Rule-of-thirds overlay toggle (purely a framing aid; does not affect capture).
+    @State private var gridEnabled = false
+    /// The active tap-to-focus reticle, if any. Auto-dismisses after a short delay.
+    @State private var focusReticle: FocusReticle?
+    /// Manual exposure, -1...1, driven by dragging the reticle's sun slider.
+    @State private var exposureNorm: CGFloat = 0
+    @State private var exposureBase: CGFloat = 0
+
+    /// A tap-to-focus indicator placed at `location` (preview coordinates). `id`
+    /// lets a fresh tap restart the auto-dismiss timer cleanly.
+    private struct FocusReticle: Equatable {
+        var location: CGPoint
+        var id = UUID()
+    }
 
     var body: some View {
         ZStack {
@@ -40,6 +57,15 @@ struct CameraView: View {
                     permissionDenied
                 } else {
                     previewLayer(in: geo.size)
+                        // Fade the preview in once frames are actually flowing so
+                        // the hand-off from black never looks like a stutter.
+                        .opacity(model.camera.isRunning ? 1 : 0)
+                        .animation(.easeIn(duration: 0.25), value: model.camera.isRunning)
+                    if gridEnabled { gridOverlay }
+                    if let reticle = focusReticle {
+                        focusReticleView(reticle)
+                            .transition(.opacity)
+                    }
                 }
                 if model.camera.showScreenFlash {
                     Color.white.ignoresSafeArea()
@@ -48,13 +74,10 @@ struct CameraView: View {
                 }
                 VStack {
                     Spacer()
-                    ZStack {
+                    VStack(spacing: 18) {
+                        controlRow
+                        if model.camera.zoomPresets.count > 1 { zoomControl }
                         shutterButton
-                        HStack {
-                            flashButton
-                            Spacer()
-                        }
-                        .padding(.leading, 44)
                     }
                     .padding(.bottom, 40)
                 }
@@ -69,9 +92,14 @@ struct CameraView: View {
             .ignoresSafeArea()
             .gesture(
                 MagnificationGesture()
-                    .onChanged { value in model.camera.zoom(factor: value) }
+                    .onChanged { value in
+                        let base = zoomBase ?? model.camera.zoomFactor
+                        if zoomBase == nil { zoomBase = base }
+                        model.camera.setZoom(base * value)
+                    }
+                    .onEnded { _ in zoomBase = nil }
             )
-            .onTapGesture(count: 2) { model.flip() }
+            .onTapGesture(count: 2) { flip() }
             .onTapGesture { location in
                 // Single tap = focus. (Double-tap flip takes priority above.)
                 // Convert through the preview layer so the focus point accounts
@@ -81,22 +109,34 @@ struct CameraView: View {
                     ?? CGPoint(x: location.x / size.width,
                                y: location.y / size.height)
                 model.camera.focus(atPoint: point)
+                showFocusReticle(at: location)
             }
             .accessibilityElement()
             .accessibilityLabel("Camera preview")
             .accessibilityHint("Double tap to flip the camera")
     }
 
+    // MARK: Camera controls
+    //
+    // The top of the screen belongs to `PairedHomeView`'s bar (settings · partner
+    // · gallery) and the bottom-right to its inbox handle, so the camera controls
+    // live in the bottom cluster just above the zoom row and shutter.
+
+    private var controlRow: some View {
+        HStack(spacing: 24) {
+            flashButton
+            gridButton
+            flipButton
+        }
+    }
+
     private var flashButton: some View {
         let on = model.camera.flashEnabled
         return Button {
             model.camera.flashEnabled.toggle()
+            Haptics.light()
         } label: {
-            Image(systemName: on ? "bolt.fill" : "bolt.slash.fill")
-                .font(.title3)
-                .foregroundStyle(on ? .yellow : .white)
-                .padding(12)
-                .background(.black.opacity(0.4), in: Circle())
+            controlIcon(on ? "bolt.fill" : "bolt.slash.fill", active: on)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Flash")
@@ -104,8 +144,167 @@ struct CameraView: View {
         .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 
+    private var gridButton: some View {
+        Button {
+            gridEnabled.toggle()
+            Haptics.light()
+        } label: {
+            controlIcon("grid", active: gridEnabled)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Grid")
+        .accessibilityValue(gridEnabled ? "On" : "Off")
+        .accessibilityAddTraits(gridEnabled ? [.isSelected] : [])
+    }
+
+    private var flipButton: some View {
+        Button {
+            flip()
+        } label: {
+            controlIcon("arrow.triangle.2.circlepath", active: false)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Flip camera")
+    }
+
+    private func controlIcon(_ name: String, active: Bool) -> some View {
+        Image(systemName: name)
+            .font(.title3)
+            .foregroundStyle(active ? .yellow : .white)
+            .frame(width: 44, height: 44)
+            .background(.black.opacity(0.4), in: Circle())
+    }
+
+    // MARK: Zoom control
+
+    private var zoomControl: some View {
+        HStack(spacing: 6) {
+            ForEach(model.camera.zoomPresets, id: \.self) { preset in
+                zoomChip(preset)
+            }
+        }
+        .padding(6)
+        .background(.black.opacity(0.4), in: Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Zoom")
+    }
+
+    private func zoomChip(_ preset: CGFloat) -> some View {
+        let selected = nearestPreset == preset
+        // The selected chip shows the live zoom (e.g. "1.4×") so pinching reads out.
+        let text = selected ? zoomLabel(model.camera.zoomFactor) : shortZoomLabel(preset)
+        return Button {
+            model.camera.setZoom(preset, animated: true)
+            Haptics.light()
+        } label: {
+            Text(text)
+                .font(.system(size: selected ? 14 : 12, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(selected ? .yellow : .white)
+                .frame(width: selected ? 50 : 38, height: 38)
+                .background(.black.opacity(selected ? 0.55 : 0.0), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(shortZoomLabel(preset)) zoom")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    /// The preset currently "active" — the one closest to the live zoom factor.
+    private var nearestPreset: CGFloat? {
+        model.camera.zoomPresets.min(by: {
+            abs($0 - model.camera.zoomFactor) < abs($1 - model.camera.zoomFactor)
+        })
+    }
+
+    private func zoomLabel(_ z: CGFloat) -> String {
+        if abs(z - z.rounded()) < 0.05 { return "\(Int(z.rounded()))×" }
+        return String(format: "%.1f×", z)
+    }
+
+    private func shortZoomLabel(_ z: CGFloat) -> String {
+        if abs(z - z.rounded()) < 0.05 { return "\(Int(z.rounded()))" }
+        return String(format: "%.1f", z)
+    }
+
+    // MARK: Grid & focus overlays
+
+    private var gridOverlay: some View {
+        GeometryReader { geo in
+            Path { path in
+                for i in 1...2 {
+                    let x = geo.size.width * CGFloat(i) / 3
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: geo.size.height))
+                    let y = geo.size.height * CGFloat(i) / 3
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                }
+            }
+            .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+
+    private func focusReticleView(_ reticle: FocusReticle) -> some View {
+        // A focus square with a draggable "sun" to its right for exposure.
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.yellow, lineWidth: 1.5)
+                .frame(width: 74, height: 74)
+            Image(systemName: "sun.max.fill")
+                .font(.caption)
+                .foregroundStyle(.yellow)
+                .offset(y: -exposureNorm * 30)
+        }
+        .position(x: reticle.location.x + 10, y: reticle.location.y)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if exposureBase == 0, abs(value.translation.height) < 0.5 {
+                        exposureBase = exposureNorm
+                    }
+                    let delta = -value.translation.height / 150
+                    exposureNorm = min(max(exposureBase + delta, -1), 1)
+                    model.camera.setExposure(normalized: exposureNorm)
+                    // Keep the reticle alive while actively adjusting exposure.
+                    keepReticleAlive(reticle.id)
+                }
+                .onEnded { _ in exposureBase = exposureNorm }
+        )
+        .allowsHitTesting(true)
+        .accessibilityHidden(true)
+    }
+
+    // MARK: Actions
+
+    private func flip() {
+        model.flip()
+        Haptics.light()
+    }
+
+    private func showFocusReticle(at location: CGPoint) {
+        exposureNorm = 0
+        exposureBase = 0
+        let reticle = FocusReticle(location: location)
+        withAnimation(.easeOut(duration: 0.15)) { focusReticle = reticle }
+        keepReticleAlive(reticle.id)
+    }
+
+    /// Dismiss the reticle ~2.5s after the last interaction with this `id`.
+    private func keepReticleAlive(_ id: UUID) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if focusReticle?.id == id {
+                withAnimation(.easeOut(duration: 0.3)) { focusReticle = nil }
+            }
+        }
+    }
+
     private var shutterButton: some View {
         Button {
+            Haptics.medium()
             model.capture(previewAspect: previewHandle.aspectRatio)
         } label: {
             ZStack {
@@ -294,5 +493,15 @@ struct CameraView: View {
         }
         .accessibilityLabel(value == 0 ? "Until dismissed" : "\(value) seconds")
         .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+/// Lightweight haptic feedback for camera interactions.
+enum Haptics {
+    @MainActor static func light() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    @MainActor static func medium() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 }

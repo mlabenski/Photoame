@@ -3,6 +3,17 @@ import AVFoundation
 import UIKit
 import os
 
+/// Capabilities reported from the session queue to the UI when the active device
+/// changes, so the zoom controls can reflect what the current lens set supports.
+/// `min`/`max`/`current`/`presets` are all expressed as *display* zoom (where the
+/// main wide camera is 1.0×), not raw `videoZoomFactor`.
+struct ZoomCapabilities: Sendable {
+    var minZoom: CGFloat
+    var maxZoom: CGFloat
+    var current: CGFloat
+    var presets: [CGFloat]
+}
+
 /// Owns the `AVCaptureSession` and confines every access to a private serial
 /// queue. Declared `@unchecked Sendable` because that confinement is enforced by
 /// convention here rather than by the type system; nothing outside this class
@@ -17,9 +28,26 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
     private var configured = false
     private var captureContinuation: CheckedContinuation<UIImage, Error>?
     private let log = Logger(subsystem: "com.photoame.app", category: "camera")
+
+    // MARK: Zoom mapping
+    //
+    // Virtual multi-lens devices (triple / dual-wide) express zoom as a single
+    // continuous `videoZoomFactor`, where 1.0 is the *widest* physical lens (the
+    // ultra-wide, i.e. "0.5×" in the camera UI). The main wide lens — what users
+    // think of as "1×" — kicks in at the first entry of
+    // `virtualDeviceSwitchOverVideoZoomFactors`. We treat that factor as the 1.0×
+    // reference and express everything the UI sees relative to it.
+    private var referenceFactor: CGFloat = 1.0
+    private var minDisplayZoom: CGFloat = 1.0
+    private var maxDisplayZoom: CGFloat = 8.0
+
     /// Called on the main queue whenever the running state changes (initial
     /// start, interruption, or interruption-ended restart).
     private var runningStateChanged: (@Sendable (Bool) -> Void)?
+    /// Reports the live display-zoom (main queue) as the user pinches or taps a preset.
+    var onZoomChanged: (@Sendable (CGFloat) -> Void)?
+    /// Reports the active lens set's zoom capabilities (main queue) after configure/flip.
+    var onCapabilities: (@Sendable (ZoomCapabilities) -> Void)?
 
     override init() {
         super.init()
@@ -30,6 +58,15 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
                            name: .AVCaptureSessionWasInterrupted, object: session)
         center.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)),
                            name: .AVCaptureSessionInterruptionEnded, object: session)
+    }
+
+    /// Configure the session ahead of the first `start` so the first frame lands
+    /// as soon as the preview is on screen. Safe to call before `start`; a no-op
+    /// once configured. Only call when camera access is already authorized.
+    func prepare() {
+        queue.async {
+            if !self.configured { self.configureSession() }
+        }
     }
 
     /// Start the session (configuring it on first run). Reports the running state
@@ -99,31 +136,69 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
             self.session.beginConfiguration()
             self.addVideoInput(front: front)
             self.session.commitConfiguration()
+            self.applyDeviceDefaultsAndCapabilities(front: front)
         }
     }
 
-    func zoom(factor: CGFloat) {
+    // MARK: Zoom
+
+    /// Set the zoom in *display* terms (main wide == 1.0×). `animated` ramps the
+    /// lens (used for preset taps); pinch passes `false` for immediate tracking.
+    func setZoom(display: CGFloat, animated: Bool) {
         queue.async {
             guard let device = self.videoInput?.device else { return }
-            try? device.lockForConfiguration()
-            let maxZoom = min(device.activeFormat.videoMaxZoomFactor, 8.0)
-            device.videoZoomFactor = min(max(factor, 1.0), maxZoom)
-            device.unlockForConfiguration()
+            let clampedDisplay = min(max(display, self.minDisplayZoom), self.maxDisplayZoom)
+            let factor = clampedDisplay * self.referenceFactor
+            do {
+                try device.lockForConfiguration()
+                if animated {
+                    device.ramp(toVideoZoomFactor: factor, withRate: 24)
+                } else {
+                    device.cancelVideoZoomRamp()
+                    device.videoZoomFactor = factor
+                }
+                device.unlockForConfiguration()
+            } catch {
+                self.log.error("zoom lock failed: \(error.localizedDescription, privacy: .public)")
+            }
+            if let cb = self.onZoomChanged {
+                DispatchQueue.main.async { cb(clampedDisplay) }
+            }
         }
     }
+
+    // MARK: Focus & exposure
 
     func focus(atPoint point: CGPoint) {
         queue.async {
             guard let device = self.videoInput?.device else { return }
             try? device.lockForConfiguration()
-            if device.isFocusPointOfInterestSupported {
+            if device.isFocusPointOfInterestSupported, device.isFocusModeSupported(.autoFocus) {
                 device.focusPointOfInterest = point
                 device.focusMode = .autoFocus
             }
-            if device.isExposurePointOfInterestSupported {
+            if device.isExposurePointOfInterestSupported, device.isExposureModeSupported(.autoExpose) {
                 device.exposurePointOfInterest = point
                 device.exposureMode = .autoExpose
             }
+            // Reset any manual exposure compensation when the user re-aims.
+            if device.isExposureModeSupported(.continuousAutoExposure) || device.isExposureModeSupported(.autoExpose) {
+                device.setExposureTargetBias(0, completionHandler: nil)
+            }
+            device.unlockForConfiguration()
+        }
+    }
+
+    /// Manual exposure compensation. `normalized` is -1...1; mapped onto the
+    /// device's supported bias range (0 == the metered exposure).
+    func setExposure(normalized: CGFloat) {
+        queue.async {
+            guard let device = self.videoInput?.device else { return }
+            let n = Float(min(max(normalized, -1), 1))
+            let bias = n >= 0 ? n * device.maxExposureTargetBias
+                              : n * -device.minExposureTargetBias
+            try? device.lockForConfiguration()
+            device.setExposureTargetBias(bias, completionHandler: nil)
             device.unlockForConfiguration()
         }
     }
@@ -133,6 +208,9 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
             queue.async {
                 self.captureContinuation = continuation
                 let settings = AVCapturePhotoSettings()
+                // Favor a snappy shutter over maximum quality — this is a quick-
+                // snap app, and the capture is downscaled before sending anyway.
+                settings.photoQualityPrioritization = .balanced
                 // Back camera uses the hardware flash; front camera's "flash" is
                 // the white screen overlay handled in `CameraService`.
                 if !front {
@@ -163,14 +241,13 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
         }
         session.commitConfiguration()
         configured = true
+        applyDeviceDefaultsAndCapabilities(front: true)
     }
 
     private func addVideoInput(front: Bool) {
         if let existing = videoInput { session.removeInput(existing) }
-        let position: AVCaptureDevice.Position = front ? .front : .back
-        guard let device = AVCaptureDevice.default(
-            .builtInWideAngleCamera, for: .video, position: position) else {
-            log.error("no wide-angle camera for position \(front ? "front" : "back", privacy: .public)")
+        guard let device = Self.bestDevice(front: front) else {
+            log.error("no camera for position \(front ? "front" : "back", privacy: .public)")
             return
         }
         let input: AVCaptureDeviceInput
@@ -186,6 +263,79 @@ final class CaptureSessionController: NSObject, @unchecked Sendable {
         }
         session.addInput(input)
         videoInput = input
+    }
+
+    /// Prefer a virtual multi-lens device on the back so we get real optical zoom
+    /// and ultra-wide (0.5×); fall back through progressively simpler devices.
+    private static func bestDevice(front: Bool) -> AVCaptureDevice? {
+        if front {
+            return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+        }
+        let order: [AVCaptureDevice.DeviceType] = [
+            .builtInTripleCamera,
+            .builtInDualWideCamera,
+            .builtInDualCamera,
+            .builtInWideAngleCamera,
+        ]
+        for type in order {
+            if let device = AVCaptureDevice.default(type, for: .video, position: .back) {
+                return device
+            }
+        }
+        return nil
+    }
+
+    /// After the active device changes: set sensible AF/AE defaults, reset to 1×,
+    /// compute the display-zoom range + presets, and report them to the UI. Runs
+    /// on `queue` after `commitConfiguration` so the device lock is independent of
+    /// the session-configuration transaction.
+    private func applyDeviceDefaultsAndCapabilities(front: Bool) {
+        guard let device = videoInput?.device else { return }
+
+        let switchovers = device.virtualDeviceSwitchOverVideoZoomFactors.map { CGFloat(truncating: $0) }
+        let hasUltraWide = !switchovers.isEmpty && device.minAvailableVideoZoomFactor < switchovers[0]
+        referenceFactor = hasUltraWide ? switchovers[0] : 1.0
+        minDisplayZoom = device.minAvailableVideoZoomFactor / referenceFactor
+        // Cap digital zoom so the slider doesn't run out to absurd, mushy factors.
+        maxDisplayZoom = min(device.maxAvailableVideoZoomFactor / referenceFactor, 10.0)
+
+        do {
+            try device.lockForConfiguration()
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            }
+            if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = true }
+            device.setExposureTargetBias(0, completionHandler: nil)
+            device.videoZoomFactor = referenceFactor   // display 1.0×
+            device.unlockForConfiguration()
+        } catch {
+            log.error("device defaults lock failed: \(error.localizedDescription, privacy: .public)")
+        }
+
+        let caps = ZoomCapabilities(minZoom: minDisplayZoom,
+                                    maxZoom: maxDisplayZoom,
+                                    current: 1.0,
+                                    presets: zoomPresets(switchovers: switchovers))
+        if let cb = onCapabilities { DispatchQueue.main.async { cb(caps) } }
+    }
+
+    /// Build the row of tap-to-jump zoom presets: 0.5× if an ultra-wide exists,
+    /// always 1×, the device's optical tele stops, and a 2× digital fallback.
+    private func zoomPresets(switchovers: [CGFloat]) -> [CGFloat] {
+        var presets: Set<CGFloat> = [1.0]
+        if minDisplayZoom <= 0.5 + 0.001 { presets.insert(0.5) }
+        // Optical switch-over points above the main wide become tele presets.
+        for factor in switchovers {
+            let display = factor / referenceFactor
+            if display > 1.5 { presets.insert((display * 10).rounded() / 10) }
+        }
+        if !presets.contains(where: { $0 >= 2 }), maxDisplayZoom >= 2 { presets.insert(2.0) }
+        return presets
+            .filter { $0 >= minDisplayZoom - 0.001 && $0 <= maxDisplayZoom + 0.001 }
+            .sorted()
     }
 }
 
@@ -229,10 +379,36 @@ final class CameraService {
     /// front camera's screen-flash overlay. Off by default.
     var flashEnabled = false
 
+    // Zoom state, in display terms (main wide == 1.0×), kept in sync with the
+    // active lens set via the controller's callbacks.
+    private(set) var zoomFactor: CGFloat = 1.0
+    private(set) var minZoom: CGFloat = 1.0
+    private(set) var maxZoom: CGFloat = 8.0
+    private(set) var zoomPresets: [CGFloat] = [1.0]
+
     private let controller = CaptureSessionController()
 
     /// The session, for the preview layer only.
     var captureSession: AVCaptureSession { controller.session }
+
+    init() {
+        controller.onZoomChanged = { [weak self] z in
+            Task { @MainActor in self?.zoomFactor = z }
+        }
+        controller.onCapabilities = { [weak self] caps in
+            Task { @MainActor in
+                self?.minZoom = caps.minZoom
+                self?.maxZoom = caps.maxZoom
+                self?.zoomPresets = caps.presets
+                self?.zoomFactor = caps.current
+            }
+        }
+        // Warm the session up front for already-authorized users so the first
+        // frame appears as soon as the view is on screen.
+        if AVCaptureDevice.authorizationStatus(for: .video) == .authorized {
+            controller.prepare()
+        }
+    }
 
     func onAppear() { Task { await requestAccessAndStart() } }
     func onDisappear() {
@@ -262,10 +438,16 @@ final class CameraService {
 
     func flip() {
         isFrontCamera.toggle()
+        zoomFactor = 1.0
         controller.flip(front: isFrontCamera)
     }
 
-    func zoom(factor: CGFloat) { controller.zoom(factor: factor) }
+    /// Set zoom in display terms. Pinch passes `animated: false` for 1:1 tracking;
+    /// preset taps pass `true` to ramp smoothly.
+    func setZoom(_ display: CGFloat, animated: Bool = false) {
+        controller.setZoom(display: display, animated: animated)
+    }
+    func setExposure(normalized: CGFloat) { controller.setExposure(normalized: normalized) }
     func focus(atPoint point: CGPoint) { controller.focus(atPoint: point) }
 
     func capturePhoto() async throws -> UIImage {
